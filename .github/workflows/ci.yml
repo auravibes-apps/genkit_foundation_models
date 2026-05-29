@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dart:
+    name: Dart checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install root dependencies
+        run: flutter pub get
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test pigeons example/lib example/test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test root package
+        run: flutter test
+
+      - name: Install example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Test example app
+        working-directory: example
+        run: flutter test
+
+      - name: Publish dry run
+        run: flutter pub publish --dry-run
+
+  foundation-models:
+    name: Foundation Models ${{ matrix.platform }}
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos, ios]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Swift Package Manager
+        run: flutter config --enable-swift-package-manager
+
+      - name: Install root dependencies
+        run: flutter pub get
+
+      - name: Install example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Test example app
+        if: matrix.platform == 'macos'
+        working-directory: example
+        run: flutter test
+
+      - name: Build example macOS app
+        if: matrix.platform == 'macos'
+        working-directory: example
+        run: flutter build macos --debug
+
+      - name: Build example iOS app
+        if: matrix.platform == 'ios'
+        working-directory: example
+        run: flutter build ios --debug --no-codesign
+
+      - name: Typecheck FoundationModels Swift bridge when SDK is available
+        run: tool/ci/typecheck_foundation_models.sh ${{ matrix.platform }}
