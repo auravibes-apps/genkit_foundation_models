@@ -15,11 +15,13 @@ class NativeGenerateRequest {
     required this.messages,
     this.systemInstruction,
     this.configJson,
+    this.toolsJson,
   });
 
   List<NativeMessage> messages;
   String? systemInstruction;
   String? configJson;
+  String? toolsJson;
 }
 
 class NativeMessage {
@@ -51,11 +53,39 @@ class NativeGenerateResponse {
   String? errorMessage;
 }
 
+class NativeGenerateStreamEvent {
+  NativeGenerateStreamEvent({
+    this.requestId,
+    this.parts,
+    this.done,
+    this.response,
+    this.errorCode,
+    this.errorMessage,
+  });
+
+  String? requestId;
+  List<NativePart>? parts;
+  bool? done;
+  NativeGenerateResponse? response;
+  String? errorCode;
+  String? errorMessage;
+}
+
 @HostApi()
 abstract class FoundationModelsHostApi {
   @async
   NativeGenerateResponse generate(NativeGenerateRequest request);
 
   @async
+  String startGenerateStream(NativeGenerateRequest request);
+
+  void cancelGenerateStream(String requestId);
+
+  @async
   bool isAvailable();
+}
+
+@EventChannelApi()
+abstract class FoundationModelsStreamApi {
+  NativeGenerateStreamEvent streamEvents();
 }

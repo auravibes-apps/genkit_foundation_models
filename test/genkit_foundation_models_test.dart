@@ -20,7 +20,7 @@ void main() {
       expect(supports['multiturn'], isTrue);
       expect(supports['systemRole'], isTrue);
       expect(supports['media'], isFalse);
-      expect(supports['tools'], isFalse);
+      expect(supports['tools'], isTrue);
       expect(supports['constrained'], isFalse);
       expect(supports['output'], ['text']);
     });
@@ -102,6 +102,266 @@ void main() {
       expect(api.lastRequest?.messages.single.parts.single.text, 'Hello');
     });
 
+    test('streams native text chunks through Genkit model chunks', () async {
+      final api = _FakeFoundationModelsApi(
+        streamEvents: [
+          NativeGenerateStreamEvent(parts: [NativePart(text: 'hel')]),
+          NativeGenerateStreamEvent(parts: [NativePart(text: 'lo')]),
+          NativeGenerateStreamEvent(
+            done: true,
+            response: NativeGenerateResponse(
+              parts: [NativePart(text: 'hello')],
+              finishReason: 'stop',
+            ),
+          ),
+        ],
+      );
+      final plugin = FoundationModelsPlugin(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+      final chunks = <ModelResponseChunk>[];
+
+      final response = await model(
+        ModelRequest(messages: _textMessages),
+        onChunk: chunks.add,
+      );
+
+      expect(api.streamed, isTrue);
+      expect(chunks.map((chunk) => chunk.content.single.text), ['hel', 'lo']);
+      expect(chunks.every((chunk) => chunk.role?.value == 'model'), isTrue);
+      expect(response.message?.content.single.text, 'hello');
+    });
+
+    test('maps Genkit tool declarations and native tool requests', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [
+            NativePart(
+              toolRequestJson:
+                  '{"ref":"call-1","name":"lookup","input":{"q":"aura"}}',
+            ),
+          ],
+          finishReason: 'stop',
+        ),
+      );
+      final plugin = FoundationModelsPlugin(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      final response = await model(
+        ModelRequest(
+          messages: _textMessages,
+          tools: [
+            ToolDefinition(
+              name: 'lookup',
+              description: 'Lookup data',
+              inputSchema: {
+                'type': 'object',
+                'properties': {
+                  'q': {'type': 'string'},
+                },
+                'required': ['q'],
+              },
+            ),
+          ],
+        ),
+      );
+
+      expect(api.lastRequest?.toolsJson, contains('"name":"lookup"'));
+      final toolRequest = response.message?.content.single.toolRequest;
+      expect(toolRequest?.ref, 'call-1');
+      expect(toolRequest?.name, 'lookup');
+      expect(toolRequest?.input, {'q': 'aura'});
+    });
+
+    test('extracts tagged tool calls from native text responses', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [
+            NativePart(
+              text:
+                  '<tool_call>{"name":"lookup","arguments":{"q":"aura"}}</tool_call>',
+            ),
+          ],
+          finishReason: 'stop',
+        ),
+      );
+      final plugin = FoundationModelsPlugin(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      final response = await model(
+        ModelRequest(
+          messages: _textMessages,
+          tools: [ToolDefinition(name: 'lookup', description: 'Lookup data')],
+        ),
+      );
+
+      expect(response.text, isEmpty);
+      final toolRequest = response.message?.content.single.toolRequest;
+      expect(toolRequest?.name, 'lookup');
+      expect(toolRequest?.input, {'q': 'aura'});
+    });
+
+    test('strips tagged tool calls from visible native text', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [
+            NativePart(
+              text:
+                  'Checking. <tool_call>{"name":"lookup","arguments":{"q":"aura"}}</tool_call>',
+            ),
+          ],
+          finishReason: 'stop',
+        ),
+      );
+      final plugin = FoundationModelsPlugin(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      final response = await model(
+        ModelRequest(
+          messages: _textMessages,
+          tools: [ToolDefinition(name: 'lookup', description: 'Lookup data')],
+        ),
+      );
+
+      expect(response.text, 'Checking.');
+      expect(response.message?.content.last.toolRequest?.name, 'lookup');
+    });
+
+    test('lets Genkit execute model-requested tools', () async {
+      final api = _FakeFoundationModelsApi(
+        responses: [
+          NativeGenerateResponse(
+            parts: [
+              NativePart(
+                text:
+                    '<tool_call>{"id":"call-1","name":"lookup","arguments":{"q":"aura"}}</tool_call>',
+              ),
+            ],
+            finishReason: 'stop',
+          ),
+          NativeGenerateResponse(
+            parts: [NativePart(text: 'Tool result used.')],
+            finishReason: 'stop',
+          ),
+        ],
+      );
+      final genkit = Genkit(
+        isDevEnv: false,
+        plugins: [FoundationModelsPlugin(api: api)],
+        model: modelRef(FoundationModelsPlugin.defaultModelName),
+      );
+      addTearDown(genkit.shutdown);
+      var toolInput = <String, dynamic>{};
+      final tool = Tool<Map<String, dynamic>, Map<String, String>>(
+        name: 'lookup',
+        description: 'Lookup data',
+        fn: (input, _) async {
+          toolInput = input;
+          return {'answer': 'AURA'};
+        },
+      );
+
+      final response = await genkit.generate(prompt: 'Hello', tools: [tool]);
+
+      expect(response.text, 'Tool result used.');
+      expect(toolInput, {'q': 'aura'});
+      expect(api.requests, hasLength(2));
+      expect(api.requests.last.messages.last.role, 'tool');
+      expect(
+        api.requests.last.messages.last.parts.single.toolResponseJson,
+        isNotNull,
+      );
+    });
+
+    test(
+      'does not forward undeclared native tool requests to Genkit',
+      () async {
+        final api = _FakeFoundationModelsApi(
+          response: NativeGenerateResponse(
+            parts: [
+              NativePart(
+                toolRequestJson:
+                    '{"ref":"call-1","name":"text_generator","input":{}}',
+              ),
+            ],
+            finishReason: 'stop',
+          ),
+        );
+        final genkit = Genkit(
+          isDevEnv: false,
+          plugins: [FoundationModelsPlugin(api: api)],
+          model: modelRef(FoundationModelsPlugin.defaultModelName),
+        );
+        addTearDown(genkit.shutdown);
+        final tool = Tool<Map<String, dynamic>, Map<String, String>>(
+          name: 'current_time',
+          description: 'Returns the current local date and time.',
+          fn: (_, _) async => {'currentTime': 'now'},
+        );
+
+        await expectLater(
+          genkit.generate(prompt: 'Hello', tools: [tool]),
+          throwsA(
+            isA<FoundationModelsException>().having(
+              (error) => error.code,
+              'code',
+              FoundationModelsErrorCode.ignoredToolRequest,
+            ),
+          ),
+        );
+      },
+    );
+
+    test('does not repeat completed tool requests', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [
+            NativePart(
+              toolRequestJson:
+                  '{"ref":"call-2","name":"current_time","input":{}}',
+            ),
+          ],
+          finishReason: 'stop',
+        ),
+      );
+      final plugin = FoundationModelsPlugin(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      await expectLater(
+        model(
+          ModelRequest(
+            messages: [
+              ..._textMessages,
+              Message(
+                role: Role.tool,
+                content: [
+                  ToolResponsePart(
+                    toolResponse: ToolResponse(
+                      ref: 'call-1',
+                      name: 'current_time',
+                      output: {'currentTime': 'now'},
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            tools: [
+              ToolDefinition(
+                name: 'current_time',
+                description: 'Returns current time',
+              ),
+            ],
+          ),
+        ),
+        throwsA(
+          isA<FoundationModelsException>().having(
+            (error) => error.code,
+            'code',
+            FoundationModelsErrorCode.ignoredToolRequest,
+          ),
+        ),
+      );
+    });
+
     test('fails early for unsupported request features', () async {
       final plugin = FoundationModelsPlugin(api: _FakeFoundationModelsApi());
       final model = plugin.model(FoundationModelsPlugin.defaultModelName);
@@ -129,12 +389,6 @@ void main() {
               ],
             ),
           ],
-        ),
-      );
-      await expectUnsupported(
-        ModelRequest(
-          messages: _textMessages,
-          tools: [ToolDefinition(name: 'lookup', description: 'Lookup data')],
         ),
       );
       await expectUnsupported(
@@ -207,21 +461,43 @@ final _textMessages = [
 ];
 
 final class _FakeFoundationModelsApi implements FoundationModelsApi {
-  _FakeFoundationModelsApi({NativeGenerateResponse? response})
-    : response =
-          response ??
-          NativeGenerateResponse(
-            parts: [NativePart(text: 'ok')],
-            finishReason: 'stop',
-          );
+  _FakeFoundationModelsApi({
+    NativeGenerateResponse? response,
+    List<NativeGenerateResponse>? responses,
+    List<NativeGenerateStreamEvent>? streamEvents,
+  }) : responses =
+           responses ??
+           [
+             response ??
+                 NativeGenerateResponse(
+                   parts: [NativePart(text: 'ok')],
+                   finishReason: 'stop',
+                 ),
+           ],
+       streamEvents = streamEvents ?? const [];
 
-  final NativeGenerateResponse response;
+  final List<NativeGenerateResponse> responses;
+  final List<NativeGenerateStreamEvent> streamEvents;
   NativeGenerateRequest? lastRequest;
+  final requests = <NativeGenerateRequest>[];
+  bool streamed = false;
 
   @override
   Future<NativeGenerateResponse> generate(NativeGenerateRequest request) async {
     lastRequest = request;
-    return response;
+    requests.add(request);
+    return responses[requests.length - 1];
+  }
+
+  @override
+  Stream<NativeGenerateStreamEvent> streamGenerate(
+    NativeGenerateRequest request,
+  ) async* {
+    lastRequest = request;
+    streamed = true;
+    for (final event in streamEvents) {
+      yield event;
+    }
   }
 
   @override
@@ -235,6 +511,16 @@ final class _ThrowingFoundationModelsHostApi extends FoundationModelsHostApi {
 
   @override
   Future<NativeGenerateResponse> generate(NativeGenerateRequest request) {
+    throw error;
+  }
+
+  @override
+  Future<String> startGenerateStream(NativeGenerateRequest request) {
+    throw error;
+  }
+
+  @override
+  Future<void> cancelGenerateStream(String requestId) {
     throw error;
   }
 

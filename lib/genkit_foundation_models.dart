@@ -6,5 +6,7 @@ export 'src/pigeon/foundation_models_api.g.dart'
         FoundationModelsHostApi,
         NativeGenerateRequest,
         NativeGenerateResponse,
+        NativeGenerateStreamEvent,
         NativeMessage,
-        NativePart;
+        NativePart,
+        streamEvents;

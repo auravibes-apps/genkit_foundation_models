@@ -179,6 +179,7 @@ struct NativeGenerateRequest: Hashable {
   var messages: [NativeMessage]
   var systemInstruction: String? = nil
   var configJson: String? = nil
+  var toolsJson: String? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -186,11 +187,13 @@ struct NativeGenerateRequest: Hashable {
     let messages = pigeonVar_list[0] as! [NativeMessage]
     let systemInstruction: String? = nilOrValue(pigeonVar_list[1])
     let configJson: String? = nilOrValue(pigeonVar_list[2])
+    let toolsJson: String? = nilOrValue(pigeonVar_list[3])
 
     return NativeGenerateRequest(
       messages: messages,
       systemInstruction: systemInstruction,
-      configJson: configJson
+      configJson: configJson,
+      toolsJson: toolsJson
     )
   }
   func toList() -> [Any?] {
@@ -198,13 +201,14 @@ struct NativeGenerateRequest: Hashable {
       messages,
       systemInstruction,
       configJson,
+      toolsJson,
     ]
   }
   static func == (lhs: NativeGenerateRequest, rhs: NativeGenerateRequest) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return deepEqualsFoundationModelsApi(lhs.messages, rhs.messages) && deepEqualsFoundationModelsApi(lhs.systemInstruction, rhs.systemInstruction) && deepEqualsFoundationModelsApi(lhs.configJson, rhs.configJson)
+    return deepEqualsFoundationModelsApi(lhs.messages, rhs.messages) && deepEqualsFoundationModelsApi(lhs.systemInstruction, rhs.systemInstruction) && deepEqualsFoundationModelsApi(lhs.configJson, rhs.configJson) && deepEqualsFoundationModelsApi(lhs.toolsJson, rhs.toolsJson)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -212,6 +216,7 @@ struct NativeGenerateRequest: Hashable {
     deepHashFoundationModelsApi(value: messages, hasher: &hasher)
     deepHashFoundationModelsApi(value: systemInstruction, hasher: &hasher)
     deepHashFoundationModelsApi(value: configJson, hasher: &hasher)
+    deepHashFoundationModelsApi(value: toolsJson, hasher: &hasher)
   }
 }
 
@@ -338,6 +343,62 @@ struct NativeGenerateResponse: Hashable {
   }
 }
 
+/// Generated class from Pigeon that represents data sent in messages.
+struct NativeGenerateStreamEvent: Hashable {
+  var requestId: String? = nil
+  var parts: [NativePart]? = nil
+  var done: Bool? = nil
+  var response: NativeGenerateResponse? = nil
+  var errorCode: String? = nil
+  var errorMessage: String? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> NativeGenerateStreamEvent? {
+    let requestId: String? = nilOrValue(pigeonVar_list[0])
+    let parts: [NativePart]? = nilOrValue(pigeonVar_list[1])
+    let done: Bool? = nilOrValue(pigeonVar_list[2])
+    let response: NativeGenerateResponse? = nilOrValue(pigeonVar_list[3])
+    let errorCode: String? = nilOrValue(pigeonVar_list[4])
+    let errorMessage: String? = nilOrValue(pigeonVar_list[5])
+
+    return NativeGenerateStreamEvent(
+      requestId: requestId,
+      parts: parts,
+      done: done,
+      response: response,
+      errorCode: errorCode,
+      errorMessage: errorMessage
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      requestId,
+      parts,
+      done,
+      response,
+      errorCode,
+      errorMessage,
+    ]
+  }
+  static func == (lhs: NativeGenerateStreamEvent, rhs: NativeGenerateStreamEvent) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return deepEqualsFoundationModelsApi(lhs.requestId, rhs.requestId) && deepEqualsFoundationModelsApi(lhs.parts, rhs.parts) && deepEqualsFoundationModelsApi(lhs.done, rhs.done) && deepEqualsFoundationModelsApi(lhs.response, rhs.response) && deepEqualsFoundationModelsApi(lhs.errorCode, rhs.errorCode) && deepEqualsFoundationModelsApi(lhs.errorMessage, rhs.errorMessage)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("NativeGenerateStreamEvent")
+    deepHashFoundationModelsApi(value: requestId, hasher: &hasher)
+    deepHashFoundationModelsApi(value: parts, hasher: &hasher)
+    deepHashFoundationModelsApi(value: done, hasher: &hasher)
+    deepHashFoundationModelsApi(value: response, hasher: &hasher)
+    deepHashFoundationModelsApi(value: errorCode, hasher: &hasher)
+    deepHashFoundationModelsApi(value: errorMessage, hasher: &hasher)
+  }
+}
+
 private class FoundationModelsApiPigeonCodecReader: FlutterStandardReader {
   override func readValue(ofType type: UInt8) -> Any? {
     switch type {
@@ -349,6 +410,8 @@ private class FoundationModelsApiPigeonCodecReader: FlutterStandardReader {
       return NativePart.fromList(self.readValue() as! [Any?])
     case 132:
       return NativeGenerateResponse.fromList(self.readValue() as! [Any?])
+    case 133:
+      return NativeGenerateStreamEvent.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -368,6 +431,9 @@ private class FoundationModelsApiPigeonCodecWriter: FlutterStandardWriter {
       super.writeValue(value.toList())
     } else if let value = value as? NativeGenerateResponse {
       super.writeByte(132)
+      super.writeValue(value.toList())
+    } else if let value = value as? NativeGenerateStreamEvent {
+      super.writeByte(133)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -389,10 +455,14 @@ class FoundationModelsApiPigeonCodec: FlutterStandardMessageCodec, @unchecked Se
   static let shared = FoundationModelsApiPigeonCodec(readerWriter: FoundationModelsApiPigeonCodecReaderWriter())
 }
 
+var foundationModelsApiPigeonMethodCodec = FlutterStandardMethodCodec(readerWriter: FoundationModelsApiPigeonCodecReaderWriter());
+
 
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
 protocol FoundationModelsHostApi {
   func generate(request: NativeGenerateRequest, completion: @escaping (Result<NativeGenerateResponse, Error>) -> Void)
+  func startGenerateStream(request: NativeGenerateRequest, completion: @escaping (Result<String, Error>) -> Void)
+  func cancelGenerateStream(requestId: String) throws
   func isAvailable(completion: @escaping (Result<Bool, Error>) -> Void)
 }
 
@@ -419,6 +489,38 @@ class FoundationModelsHostApiSetup {
     } else {
       generateChannel.setMessageHandler(nil)
     }
+    let startGenerateStreamChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.startGenerateStream\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      startGenerateStreamChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let requestArg = args[0] as! NativeGenerateRequest
+        api.startGenerateStream(request: requestArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      startGenerateStreamChannel.setMessageHandler(nil)
+    }
+    let cancelGenerateStreamChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.cancelGenerateStream\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      cancelGenerateStreamChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let requestIdArg = args[0] as! String
+        do {
+          try api.cancelGenerateStream(requestId: requestIdArg)
+          reply(wrapResult(nil))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      cancelGenerateStreamChannel.setMessageHandler(nil)
+    }
     let isAvailableChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.isAvailable\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       isAvailableChannel.setMessageHandler { _, reply in
@@ -436,3 +538,67 @@ class FoundationModelsHostApiSetup {
     }
   }
 }
+
+private class PigeonStreamHandler<ReturnType>: NSObject, FlutterStreamHandler {
+  private let wrapper: PigeonEventChannelWrapper<ReturnType>
+  private var pigeonSink: PigeonEventSink<ReturnType>? = nil
+
+  init(wrapper: PigeonEventChannelWrapper<ReturnType>) {
+    self.wrapper = wrapper
+  }
+
+  func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
+    -> FlutterError?
+  {
+    pigeonSink = PigeonEventSink<ReturnType>(events)
+    wrapper.onListen(withArguments: arguments, sink: pigeonSink!)
+    return nil
+  }
+
+  func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    pigeonSink = nil
+    wrapper.onCancel(withArguments: arguments)
+    return nil
+  }
+}
+
+class PigeonEventChannelWrapper<ReturnType> {
+  func onListen(withArguments arguments: Any?, sink: PigeonEventSink<ReturnType>) {}
+  func onCancel(withArguments arguments: Any?) {}
+}
+
+class PigeonEventSink<ReturnType> {
+  private let sink: FlutterEventSink
+
+  init(_ sink: @escaping FlutterEventSink) {
+    self.sink = sink
+  }
+
+  func success(_ value: ReturnType) {
+    sink(value)
+  }
+
+  func error(code: String, message: String?, details: Any?) {
+    sink(FlutterError(code: code, message: message, details: details))
+  }
+
+  func endOfStream() {
+    sink(FlutterEndOfEventStream)
+  }
+
+}
+
+class StreamEventsStreamHandler: PigeonEventChannelWrapper<NativeGenerateStreamEvent> {
+  static func register(with messenger: FlutterBinaryMessenger,
+                      instanceName: String = "",
+                      streamHandler: StreamEventsStreamHandler) {
+    var channelName = "dev.flutter.pigeon.genkit_foundation_models.FoundationModelsStreamApi.streamEvents"
+    if !instanceName.isEmpty {
+      channelName += ".\(instanceName)"
+    }
+    let internalStreamHandler = PigeonStreamHandler<NativeGenerateStreamEvent>(wrapper: streamHandler)
+    let channel = FlutterEventChannel(name: channelName, binaryMessenger: messenger, codec: foundationModelsApiPigeonMethodCodec)
+    channel.setStreamHandler(internalStreamHandler)
+  }
+}
+      

@@ -14,7 +14,7 @@ void main() {
     await tester.pumpWidget(const FoundationModelsExampleApp());
 
     expect(find.text('Foundation Models'), findsOneWidget);
-    expect(find.text('Prompt'), findsOneWidget);
-    expect(find.text('Generate'), findsOneWidget);
+    expect(find.text('Message'), findsOneWidget);
+    expect(find.text('Send'), findsOneWidget);
   });
 }

@@ -3,6 +3,7 @@ import 'package:genkit/plugin.dart';
 import 'foundation_models_api.dart';
 import 'foundation_models_exception.dart';
 import 'foundation_models_mapper.dart';
+import 'pigeon/foundation_models_api.g.dart';
 
 final class FoundationModelsPlugin extends GenkitPlugin {
   FoundationModelsPlugin({FoundationModelsApi? api})
@@ -38,10 +39,53 @@ final class FoundationModelsPlugin extends GenkitPlugin {
           );
         }
         final nativeRequest = toNativeGenerateRequest(request);
+        final allowedToolNames = request.tools?.map((tool) => tool.name);
+        final completedToolNames = _completedToolNames(request);
+        if (context.streamingRequested) {
+          NativeGenerateResponse? finalResponse;
+          await for (final event in _api.streamGenerate(nativeRequest)) {
+            if (event.done ?? false) {
+              finalResponse = event.response;
+              continue;
+            }
+            context.sendChunk(
+              toModelResponseChunk(
+                event,
+                allowedToolNames: allowedToolNames,
+                completedToolNames: completedToolNames,
+              ),
+            );
+          }
+
+          if (finalResponse == null) {
+            throw const FoundationModelsException(
+              FoundationModelsErrorCode.generationFailed,
+              'Native stream ended without a final response.',
+            );
+          }
+          return toModelResponse(
+            finalResponse,
+            allowedToolNames: allowedToolNames,
+            completedToolNames: completedToolNames,
+          );
+        }
+
         final nativeResponse = await _api.generate(nativeRequest);
-        return toModelResponse(nativeResponse);
+        return toModelResponse(
+          nativeResponse,
+          allowedToolNames: allowedToolNames,
+          completedToolNames: completedToolNames,
+        );
       },
     );
+  }
+
+  Set<String> _completedToolNames(ModelRequest request) {
+    return request.messages
+        .expand((message) => message.content)
+        .map((part) => part.toolResponse?.name)
+        .nonNulls
+        .toSet();
   }
 
   static final ActionMetadata _metadata = modelMetadata(
@@ -52,7 +96,7 @@ final class FoundationModelsPlugin extends GenkitPlugin {
         'multiturn': true,
         'systemRole': true,
         'media': false,
-        'tools': false,
+        'tools': true,
         'toolChoice': false,
         'constrained': false,
         'output': ['text'],

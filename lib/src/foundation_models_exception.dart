@@ -4,6 +4,7 @@ enum FoundationModelsErrorCode {
   modelNotReady,
   unavailable,
   unsupportedRequest,
+  ignoredToolRequest,
   blocked,
   decodeFailed,
   generationFailed,
@@ -25,6 +26,7 @@ final class FoundationModelsException implements Exception {
         'Foundation model is not ready',
       FoundationModelsErrorCode.unavailable => 'Foundation Models unavailable',
       FoundationModelsErrorCode.unsupportedRequest => 'Unsupported request',
+      FoundationModelsErrorCode.ignoredToolRequest => 'Ignored tool request',
       FoundationModelsErrorCode.blocked => 'Generation blocked',
       FoundationModelsErrorCode.decodeFailed => 'Native response decode failed',
       FoundationModelsErrorCode.generationFailed => 'Generation failed',
@@ -42,6 +44,7 @@ final class FoundationModelsException implements Exception {
       FoundationModelsErrorCode.unavailable =>
         'Check OS version, Apple Intelligence settings, language, and model availability.',
       FoundationModelsErrorCode.unsupportedRequest => null,
+      FoundationModelsErrorCode.ignoredToolRequest => null,
       FoundationModelsErrorCode.blocked =>
         'Try a different prompt. The system safety guardrails blocked this request.',
       FoundationModelsErrorCode.decodeFailed => null,

@@ -31,20 +31,32 @@ final class GeneratePage extends StatefulWidget {
 }
 
 final class _GeneratePageState extends State<GeneratePage> {
-  final _promptController = TextEditingController(
-    text: 'Write a two sentence welcome message for a Genkit plugin.',
+  final _messageController = TextEditingController(
+    text:
+        'Use the current_time tool, then answer normally with a two sentence welcome message for a Genkit plugin.',
   );
+  final _scrollController = ScrollController();
   final _nativeApi = PigeonFoundationModelsApi();
+  late final Tool<Map<String, dynamic>?, Map<String, String>> _currentTimeTool;
   late final Genkit _genkit;
 
+  final _items = <_ChatItem>[];
+  var _messages = <Message>[];
   bool? _isAvailable;
   var _isGenerating = false;
-  String? _responseText;
-  String? _errorText;
 
   @override
   void initState() {
     super.initState();
+    _currentTimeTool = Tool<Map<String, dynamic>?, Map<String, String>>(
+      name: 'current_time',
+      description: 'Returns the current local date and time.',
+      fn: (input, _) async {
+        final output = _currentTimeToolOutput();
+        _addItem(_ChatItem.tool('current_time(${input ?? {}}) -> $output'));
+        return output;
+      },
+    );
     _genkit = Genkit(
       isDevEnv: false,
       plugins: [FoundationModelsPlugin()],
@@ -55,7 +67,8 @@ final class _GeneratePageState extends State<GeneratePage> {
 
   @override
   void dispose() {
-    _promptController.dispose();
+    _messageController.dispose();
+    _scrollController.dispose();
     unawaited(_genkit.shutdown());
     super.dispose();
   }
@@ -64,48 +77,90 @@ final class _GeneratePageState extends State<GeneratePage> {
     try {
       final isAvailable = await _nativeApi.isAvailable();
       if (!mounted) return;
-      setState(() {
-        _isAvailable = isAvailable;
-        _errorText = null;
-      });
+      setState(() => _isAvailable = isAvailable);
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _isAvailable = false;
-        _errorText = _errorMessage(error);
-      });
+      setState(() => _isAvailable = false);
+      _addItem(_ChatItem.error(_errorMessage(error)));
     }
   }
 
-  Future<void> _generate() async {
-    final prompt = _promptController.text.trim();
-    if (prompt.isEmpty) return;
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _isGenerating) return;
 
+    final requestMessages = [
+      ..._messages,
+      Message(
+        role: Role.user,
+        content: [TextPart(text: text)],
+      ),
+    ];
+
+    _messageController.clear();
+    final statusItem = _ChatItem.thinking('Thinking...');
+    var assistantItem = _ChatItem.assistant('');
     setState(() {
       _isGenerating = true;
-      _responseText = null;
-      _errorText = null;
+      _items.add(_ChatItem.user(text));
+      _items.add(statusItem);
     });
+    _scrollToBottom();
 
     try {
-      final response = await _genkit.generate(
-        prompt: prompt,
+      final stream = _genkit.generateStream(
+        messages: requestMessages,
         config: {'temperature': 0.2, 'maxOutputTokens': 256},
+        tools: [_currentTimeTool],
       );
+      await for (final chunk in stream) {
+        if (!mounted || chunk.text.isEmpty) continue;
+        setState(() {
+          if (_items.contains(statusItem)) {
+            _items.remove(statusItem);
+          }
+          if (!_items.contains(assistantItem)) {
+            _items.add(assistantItem);
+          }
+          assistantItem.text += chunk.text;
+        });
+        _scrollToBottom();
+      }
+
+      final response = await stream.onResult;
       if (!mounted) return;
       setState(() {
-        _responseText = response.text;
+        _messages = response.messages;
+        if (_items.contains(statusItem)) {
+          _items.remove(statusItem);
+        }
+        if (response.text.isNotEmpty) {
+          if (!_items.contains(assistantItem)) {
+            _items.add(assistantItem);
+          }
+          assistantItem.text = response.text;
+        }
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorText = _errorMessage(error);
+        _items.remove(statusItem);
+        if (assistantItem.text.isEmpty) {
+          _items.remove(assistantItem);
+        }
+        if (_isIgnoredToolRequest(error)) {
+          assistantItem = _ChatItem.assistant(
+            'I ignored a tool request that was not available. I can only use the tools listed by the app, like current_time.',
+          );
+          _items.add(assistantItem);
+        } else {
+          _items.add(_ChatItem.error(_errorMessage(error)));
+        }
       });
     } finally {
       if (mounted) {
-        setState(() {
-          _isGenerating = false;
-        });
+        setState(() => _isGenerating = false);
+        _scrollToBottom();
       }
     }
   }
@@ -120,42 +175,151 @@ final class _GeneratePageState extends State<GeneratePage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Foundation Models')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
+      body: Column(
         children: [
-          Text('Apple Foundation Models: $availability'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _promptController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Prompt',
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Apple Foundation Models: $availability'),
             ),
           ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _isGenerating ? null : _generate,
-            child: Text(_isGenerating ? 'Generating...' : 'Generate'),
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              itemCount: _items.length,
+              itemBuilder: (context, index) => _ChatBubble(item: _items[index]),
+            ),
           ),
-          const SizedBox(height: 24),
-          if (_responseText case final responseText?) ...[
-            Text('Response', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            SelectableText(responseText),
-          ],
-          if (_errorText case final errorText?) ...[
-            Text('Error', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            SelectableText(errorText),
-          ],
+          SafeArea(
+            minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => unawaited(_sendMessage()),
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Message',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: _isGenerating ? null : _sendMessage,
+                  child: Text(_isGenerating ? 'Sending...' : 'Send'),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  void _addItem(_ChatItem item) {
+    if (!mounted) return;
+    setState(() => _items.add(item));
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   String _errorMessage(Object error) {
     if (error is FoundationModelsException) return error.userMessage;
     return error.toString();
   }
+
+  bool _isIgnoredToolRequest(Object error) {
+    return error is FoundationModelsException &&
+        error.code == FoundationModelsErrorCode.ignoredToolRequest;
+  }
+
+  Map<String, String> _currentTimeToolOutput() {
+    final now = DateTime.now();
+    return {'currentTime': now.toIso8601String(), 'timeZone': now.timeZoneName};
+  }
 }
+
+final class _ChatBubble extends StatelessWidget {
+  const _ChatBubble({required this.item});
+
+  final _ChatItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isUser = item.type == _ChatItemType.user;
+    final colorScheme = theme.colorScheme;
+    final background = switch (item.type) {
+      _ChatItemType.user => colorScheme.primaryContainer,
+      _ChatItemType.assistant => colorScheme.surfaceContainerHighest,
+      _ChatItemType.tool => colorScheme.tertiaryContainer,
+      _ChatItemType.thinking => colorScheme.secondaryContainer,
+      _ChatItemType.error => colorScheme.errorContainer,
+    };
+    final label = switch (item.type) {
+      _ChatItemType.user => 'You',
+      _ChatItemType.assistant => 'Assistant',
+      _ChatItemType.tool => 'Tool call',
+      _ChatItemType.thinking => 'Thinking',
+      _ChatItemType.error => 'Error',
+    };
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, style: theme.textTheme.labelMedium),
+              const SizedBox(height: 6),
+              SelectableText(item.text.isEmpty ? 'Streaming...' : item.text),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+final class _ChatItem {
+  _ChatItem(this.type, this.text);
+
+  factory _ChatItem.user(String text) => _ChatItem(_ChatItemType.user, text);
+  factory _ChatItem.assistant(String text) =>
+      _ChatItem(_ChatItemType.assistant, text);
+  factory _ChatItem.tool(String text) => _ChatItem(_ChatItemType.tool, text);
+  factory _ChatItem.thinking(String text) =>
+      _ChatItem(_ChatItemType.thinking, text);
+  factory _ChatItem.error(String text) => _ChatItem(_ChatItemType.error, text);
+
+  final _ChatItemType type;
+  String text;
+}
+
+enum _ChatItemType { user, assistant, tool, thinking, error }

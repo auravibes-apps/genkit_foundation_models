@@ -10,9 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:meta/meta.dart' show immutable, protected, visibleForTesting;
 
 Object? _extractReplyValueOrThrow(
-    List<Object?>? replyList,
-    String channelName, {
-    required bool isNullValid,
+  List<Object?>? replyList,
+  String channelName, {
+  required bool isNullValid,
 }) {
   if (replyList == null) {
     throw PlatformException(
@@ -46,8 +46,9 @@ bool _deepEquals(Object? a, Object? b) {
   }
   if (a is List && b is List) {
     return a.length == b.length &&
-        a.indexed
-            .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
+        a.indexed.every(
+          ((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]),
+        );
   }
   if (a is Map && b is Map) {
     if (a.length != b.length) {
@@ -96,12 +97,12 @@ int _deepHash(Object? value) {
   return value.hashCode;
 }
 
-
 class NativeGenerateRequest {
   NativeGenerateRequest({
     required this.messages,
     this.systemInstruction,
     this.configJson,
+    this.toolsJson,
   });
 
   List<NativeMessage> messages;
@@ -110,16 +111,15 @@ class NativeGenerateRequest {
 
   String? configJson;
 
+  String? toolsJson;
+
   List<Object?> _toList() {
-    return <Object?>[
-      messages,
-      systemInstruction,
-      configJson,
-    ];
+    return <Object?>[messages, systemInstruction, configJson, toolsJson];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static NativeGenerateRequest decode(Object result) {
     result as List<Object?>;
@@ -127,6 +127,7 @@ class NativeGenerateRequest {
       messages: (result[0]! as List<Object?>).cast<NativeMessage>(),
       systemInstruction: result[1] as String?,
       configJson: result[2] as String?,
+      toolsJson: result[3] as String?,
     );
   }
 
@@ -139,7 +140,10 @@ class NativeGenerateRequest {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(messages, other.messages) && _deepEquals(systemInstruction, other.systemInstruction) && _deepEquals(configJson, other.configJson);
+    return _deepEquals(messages, other.messages) &&
+        _deepEquals(systemInstruction, other.systemInstruction) &&
+        _deepEquals(configJson, other.configJson) &&
+        _deepEquals(toolsJson, other.toolsJson);
   }
 
   @override
@@ -148,24 +152,19 @@ class NativeGenerateRequest {
 }
 
 class NativeMessage {
-  NativeMessage({
-    required this.role,
-    required this.parts,
-  });
+  NativeMessage({required this.role, required this.parts});
 
   String role;
 
   List<NativePart> parts;
 
   List<Object?> _toList() {
-    return <Object?>[
-      role,
-      parts,
-    ];
+    return <Object?>[role, parts];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static NativeMessage decode(Object result) {
     result as List<Object?>;
@@ -193,11 +192,7 @@ class NativeMessage {
 }
 
 class NativePart {
-  NativePart({
-    this.text,
-    this.toolRequestJson,
-    this.toolResponseJson,
-  });
+  NativePart({this.text, this.toolRequestJson, this.toolResponseJson});
 
   String? text;
 
@@ -206,15 +201,12 @@ class NativePart {
   String? toolResponseJson;
 
   List<Object?> _toList() {
-    return <Object?>[
-      text,
-      toolRequestJson,
-      toolResponseJson,
-    ];
+    return <Object?>[text, toolRequestJson, toolResponseJson];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static NativePart decode(Object result) {
     result as List<Object?>;
@@ -234,7 +226,9 @@ class NativePart {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(text, other.text) && _deepEquals(toolRequestJson, other.toolRequestJson) && _deepEquals(toolResponseJson, other.toolResponseJson);
+    return _deepEquals(text, other.text) &&
+        _deepEquals(toolRequestJson, other.toolRequestJson) &&
+        _deepEquals(toolResponseJson, other.toolResponseJson);
   }
 
   @override
@@ -259,16 +253,12 @@ class NativeGenerateResponse {
   String? errorMessage;
 
   List<Object?> _toList() {
-    return <Object?>[
-      parts,
-      finishReason,
-      errorCode,
-      errorMessage,
-    ];
+    return <Object?>[parts, finishReason, errorCode, errorMessage];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static NativeGenerateResponse decode(Object result) {
     result as List<Object?>;
@@ -289,7 +279,10 @@ class NativeGenerateResponse {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(parts, other.parts) && _deepEquals(finishReason, other.finishReason) && _deepEquals(errorCode, other.errorCode) && _deepEquals(errorMessage, other.errorMessage);
+    return _deepEquals(parts, other.parts) &&
+        _deepEquals(finishReason, other.finishReason) &&
+        _deepEquals(errorCode, other.errorCode) &&
+        _deepEquals(errorMessage, other.errorMessage);
   }
 
   @override
@@ -297,6 +290,70 @@ class NativeGenerateResponse {
   int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
 }
 
+class NativeGenerateStreamEvent {
+  NativeGenerateStreamEvent({
+    this.requestId,
+    this.parts,
+    this.done,
+    this.response,
+    this.errorCode,
+    this.errorMessage,
+  });
+
+  String? requestId;
+
+  List<NativePart>? parts;
+
+  bool? done;
+
+  NativeGenerateResponse? response;
+
+  String? errorCode;
+
+  String? errorMessage;
+
+  List<Object?> _toList() {
+    return <Object?>[requestId, parts, done, response, errorCode, errorMessage];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static NativeGenerateStreamEvent decode(Object result) {
+    result as List<Object?>;
+    return NativeGenerateStreamEvent(
+      requestId: result[0] as String?,
+      parts: (result[1] as List<Object?>?)?.cast<NativePart>(),
+      done: result[2] as bool?,
+      response: result[3] as NativeGenerateResponse?,
+      errorCode: result[4] as String?,
+      errorMessage: result[5] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! NativeGenerateStreamEvent ||
+        other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(requestId, other.requestId) &&
+        _deepEquals(parts, other.parts) &&
+        _deepEquals(done, other.done) &&
+        _deepEquals(response, other.response) &&
+        _deepEquals(errorCode, other.errorCode) &&
+        _deepEquals(errorMessage, other.errorMessage);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+}
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -305,17 +362,20 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is NativeGenerateRequest) {
+    } else if (value is NativeGenerateRequest) {
       buffer.putUint8(129);
       writeValue(buffer, value.encode());
-    }    else if (value is NativeMessage) {
+    } else if (value is NativeMessage) {
       buffer.putUint8(130);
       writeValue(buffer, value.encode());
-    }    else if (value is NativePart) {
+    } else if (value is NativePart) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    }    else if (value is NativeGenerateResponse) {
+    } else if (value is NativeGenerateResponse) {
       buffer.putUint8(132);
+      writeValue(buffer, value.encode());
+    } else if (value is NativeGenerateStreamEvent) {
+      buffer.putUint8(133);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -333,19 +393,29 @@ class _PigeonCodec extends StandardMessageCodec {
         return NativePart.decode(readValue(buffer)!);
       case 132:
         return NativeGenerateResponse.decode(readValue(buffer)!);
+      case 133:
+        return NativeGenerateStreamEvent.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
   }
 }
 
+const StandardMethodCodec pigeonMethodCodec = StandardMethodCodec(
+  _PigeonCodec(),
+);
+
 class FoundationModelsHostApi {
   /// Constructor for [FoundationModelsHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  FoundationModelsHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
-      : pigeonVar_binaryMessenger = binaryMessenger,
-        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  FoundationModelsHostApi({
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) : pigeonVar_binaryMessenger = binaryMessenger,
+       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
+           ? '.$messageChannelSuffix'
+           : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -353,26 +423,70 @@ class FoundationModelsHostApi {
   final String pigeonVar_messageChannelSuffix;
 
   Future<NativeGenerateResponse> generate(NativeGenerateRequest request) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.generate$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.generate$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[request]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[request],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as NativeGenerateResponse;
   }
 
+  Future<String> startGenerateStream(NativeGenerateRequest request) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.startGenerateStream$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[request],
+    );
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return pigeonVar_replyValue! as String;
+  }
+
+  Future<void> cancelGenerateStream(String requestId) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.cancelGenerateStream$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[requestId],
+    );
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
+  }
+
   Future<bool> isAvailable() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.isAvailable$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.isAvailable$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -382,11 +496,23 @@ class FoundationModelsHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as bool;
   }
+}
+
+Stream<NativeGenerateStreamEvent> streamEvents({String instanceName = ''}) {
+  if (instanceName.isNotEmpty) {
+    instanceName = '.$instanceName';
+  }
+  final EventChannel streamEventsChannel = EventChannel(
+    'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsStreamApi.streamEvents$instanceName',
+    pigeonMethodCodec,
+  );
+  return streamEventsChannel.receiveBroadcastStream().map((dynamic event) {
+    return event as NativeGenerateStreamEvent;
+  });
 }
