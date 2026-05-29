@@ -5,22 +5,35 @@ import 'package:flutter/services.dart';
 import 'foundation_models_exception.dart';
 import 'pigeon/foundation_models_api.g.dart';
 
+/// Dart-facing interface for the native Apple Foundation Models bridge.
+///
+/// Implement this in tests to avoid platform channels, or use
+/// [PigeonFoundationModelsApi] to call the Swift implementation.
 abstract interface class FoundationModelsApi {
+  /// Returns whether the system language model is currently available.
   Future<bool> isAvailable();
 
+  /// Generates one complete native response for [request].
   Future<NativeGenerateResponse> generate(NativeGenerateRequest request);
 
+  /// Streams native response events for [request].
   Stream<NativeGenerateStreamEvent> streamGenerate(
     NativeGenerateRequest request,
   );
 }
 
+/// Platform-channel backed implementation of [FoundationModelsApi].
+///
+/// This class wraps the Pigeon-generated [FoundationModelsHostApi] and maps
+/// platform errors into [FoundationModelsException].
 final class PigeonFoundationModelsApi implements FoundationModelsApi {
+  /// Creates an API wrapper around [hostApi], or the default platform channel.
   PigeonFoundationModelsApi({FoundationModelsHostApi? hostApi})
     : _hostApi = hostApi ?? FoundationModelsHostApi();
 
   final FoundationModelsHostApi _hostApi;
 
+  /// Returns whether Apple Foundation Models can be used on this device now.
   @override
   Future<bool> isAvailable() async {
     try {
@@ -30,6 +43,7 @@ final class PigeonFoundationModelsApi implements FoundationModelsApi {
     }
   }
 
+  /// Sends [request] to the host platform and waits for the final response.
   @override
   Future<NativeGenerateResponse> generate(NativeGenerateRequest request) async {
     try {
@@ -39,6 +53,7 @@ final class PigeonFoundationModelsApi implements FoundationModelsApi {
     }
   }
 
+  /// Starts native streaming and yields events for this request only.
   @override
   Stream<NativeGenerateStreamEvent> streamGenerate(
     NativeGenerateRequest request,

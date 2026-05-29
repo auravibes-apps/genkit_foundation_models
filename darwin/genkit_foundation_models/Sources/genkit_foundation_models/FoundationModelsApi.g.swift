@@ -174,11 +174,17 @@ func deepHashFoundationModelsApi(value: Any?, hasher: inout Hasher) {
 }
 
 
+/// Native generation request sent from Dart to Swift.
+///
 /// Generated class from Pigeon that represents data sent in messages.
 struct NativeGenerateRequest: Hashable {
+  /// Ordered conversation messages to send to the native model.
   var messages: [NativeMessage]
+  /// Optional system instruction used to initialize the native session.
   var systemInstruction: String? = nil
+  /// JSON-encoded generation config such as temperature or token limit.
   var configJson: String? = nil
+  /// JSON-encoded tool declarations for formatted tool-call prompting.
   var toolsJson: String? = nil
 
 
@@ -220,9 +226,13 @@ struct NativeGenerateRequest: Hashable {
   }
 }
 
+/// One conversation message for the native Foundation Models bridge.
+///
 /// Generated class from Pigeon that represents data sent in messages.
 struct NativeMessage: Hashable {
+  /// Genkit role value such as `user`, `model`, or `tool`.
   var role: String
+  /// Ordered message parts.
   var parts: [NativePart]
 
 
@@ -256,10 +266,15 @@ struct NativeMessage: Hashable {
   }
 }
 
+/// One native message or response part.
+///
 /// Generated class from Pigeon that represents data sent in messages.
 struct NativePart: Hashable {
+  /// Plain text content.
   var text: String? = nil
+  /// JSON-encoded Genkit tool request.
   var toolRequestJson: String? = nil
+  /// JSON-encoded Genkit tool response.
   var toolResponseJson: String? = nil
 
 
@@ -297,11 +312,17 @@ struct NativePart: Hashable {
   }
 }
 
+/// Complete native generation response.
+///
 /// Generated class from Pigeon that represents data sent in messages.
 struct NativeGenerateResponse: Hashable {
+  /// Response parts returned by the native model bridge.
   var parts: [NativePart]
+  /// Optional native finish reason.
   var finishReason: String? = nil
+  /// Optional native error code.
   var errorCode: String? = nil
+  /// Optional native error message.
   var errorMessage: String? = nil
 
 
@@ -343,13 +364,21 @@ struct NativeGenerateResponse: Hashable {
   }
 }
 
+/// Event emitted while a native generation request is streaming.
+///
 /// Generated class from Pigeon that represents data sent in messages.
 struct NativeGenerateStreamEvent: Hashable {
+  /// Native stream request id used to filter shared event-channel events.
   var requestId: String? = nil
+  /// Incremental response parts.
   var parts: [NativePart]? = nil
+  /// Whether this event closes the stream.
   var done: Bool? = nil
+  /// Final response included on the closing event.
   var response: NativeGenerateResponse? = nil
+  /// Optional native stream error code.
   var errorCode: String? = nil
+  /// Optional native stream error message.
   var errorMessage: String? = nil
 
 
@@ -458,11 +487,17 @@ class FoundationModelsApiPigeonCodec: FlutterStandardMessageCodec, @unchecked Se
 var foundationModelsApiPigeonMethodCodec = FlutterStandardMethodCodec(readerWriter: FoundationModelsApiPigeonCodecReaderWriter());
 
 
+/// Host API implemented in Swift.
+///
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
 protocol FoundationModelsHostApi {
+  /// Generates one final response.
   func generate(request: NativeGenerateRequest, completion: @escaping (Result<NativeGenerateResponse, Error>) -> Void)
+  /// Starts a streaming generation and returns its request id.
   func startGenerateStream(request: NativeGenerateRequest, completion: @escaping (Result<String, Error>) -> Void)
+  /// Cancels a streaming generation by request id.
   func cancelGenerateStream(requestId: String) throws
+  /// Returns whether the native system model is available now.
   func isAvailable(completion: @escaping (Result<Bool, Error>) -> Void)
 }
 
@@ -472,6 +507,7 @@ class FoundationModelsHostApiSetup {
   /// Sets up an instance of `FoundationModelsHostApi` to handle messages through the `binaryMessenger`.
   static func setUp(binaryMessenger: FlutterBinaryMessenger, api: FoundationModelsHostApi?, messageChannelSuffix: String = "") {
     let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
+    /// Generates one final response.
     let generateChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.generate\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       generateChannel.setMessageHandler { message, reply in
@@ -489,6 +525,7 @@ class FoundationModelsHostApiSetup {
     } else {
       generateChannel.setMessageHandler(nil)
     }
+    /// Starts a streaming generation and returns its request id.
     let startGenerateStreamChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.startGenerateStream\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       startGenerateStreamChannel.setMessageHandler { message, reply in
@@ -506,6 +543,7 @@ class FoundationModelsHostApiSetup {
     } else {
       startGenerateStreamChannel.setMessageHandler(nil)
     }
+    /// Cancels a streaming generation by request id.
     let cancelGenerateStreamChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.cancelGenerateStream\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       cancelGenerateStreamChannel.setMessageHandler { message, reply in
@@ -521,6 +559,7 @@ class FoundationModelsHostApiSetup {
     } else {
       cancelGenerateStreamChannel.setMessageHandler(nil)
     }
+    /// Returns whether the native system model is available now.
     let isAvailableChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.isAvailable\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       isAvailableChannel.setMessageHandler { _, reply in
@@ -588,6 +627,7 @@ class PigeonEventSink<ReturnType> {
 
 }
 
+/// Event-channel API implemented in Swift for streaming events.
 class StreamEventsStreamHandler: PigeonEventChannelWrapper<NativeGenerateStreamEvent> {
   static func register(with messenger: FlutterBinaryMessenger,
                       instanceName: String = "",

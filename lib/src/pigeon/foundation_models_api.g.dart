@@ -97,6 +97,7 @@ int _deepHash(Object? value) {
   return value.hashCode;
 }
 
+/// Native generation request sent from Dart to Swift.
 class NativeGenerateRequest {
   NativeGenerateRequest({
     required this.messages,
@@ -105,12 +106,16 @@ class NativeGenerateRequest {
     this.toolsJson,
   });
 
+  /// Ordered conversation messages to send to the native model.
   List<NativeMessage> messages;
 
+  /// Optional system instruction used to initialize the native session.
   String? systemInstruction;
 
+  /// JSON-encoded generation config such as temperature or token limit.
   String? configJson;
 
+  /// JSON-encoded tool declarations for formatted tool-call prompting.
   String? toolsJson;
 
   List<Object?> _toList() {
@@ -151,11 +156,14 @@ class NativeGenerateRequest {
   int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
 }
 
+/// One conversation message for the native Foundation Models bridge.
 class NativeMessage {
   NativeMessage({required this.role, required this.parts});
 
+  /// Genkit role value such as `user`, `model`, or `tool`.
   String role;
 
+  /// Ordered message parts.
   List<NativePart> parts;
 
   List<Object?> _toList() {
@@ -191,13 +199,17 @@ class NativeMessage {
   int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
 }
 
+/// One native message or response part.
 class NativePart {
   NativePart({this.text, this.toolRequestJson, this.toolResponseJson});
 
+  /// Plain text content.
   String? text;
 
+  /// JSON-encoded Genkit tool request.
   String? toolRequestJson;
 
+  /// JSON-encoded Genkit tool response.
   String? toolResponseJson;
 
   List<Object?> _toList() {
@@ -236,6 +248,7 @@ class NativePart {
   int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
 }
 
+/// Complete native generation response.
 class NativeGenerateResponse {
   NativeGenerateResponse({
     required this.parts,
@@ -244,12 +257,16 @@ class NativeGenerateResponse {
     this.errorMessage,
   });
 
+  /// Response parts returned by the native model bridge.
   List<NativePart> parts;
 
+  /// Optional native finish reason.
   String? finishReason;
 
+  /// Optional native error code.
   String? errorCode;
 
+  /// Optional native error message.
   String? errorMessage;
 
   List<Object?> _toList() {
@@ -290,6 +307,7 @@ class NativeGenerateResponse {
   int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
 }
 
+/// Event emitted while a native generation request is streaming.
 class NativeGenerateStreamEvent {
   NativeGenerateStreamEvent({
     this.requestId,
@@ -300,16 +318,22 @@ class NativeGenerateStreamEvent {
     this.errorMessage,
   });
 
+  /// Native stream request id used to filter shared event-channel events.
   String? requestId;
 
+  /// Incremental response parts.
   List<NativePart>? parts;
 
+  /// Whether this event closes the stream.
   bool? done;
 
+  /// Final response included on the closing event.
   NativeGenerateResponse? response;
 
+  /// Optional native stream error code.
   String? errorCode;
 
+  /// Optional native stream error message.
   String? errorMessage;
 
   List<Object?> _toList() {
@@ -405,6 +429,7 @@ const StandardMethodCodec pigeonMethodCodec = StandardMethodCodec(
   _PigeonCodec(),
 );
 
+/// Host API implemented in Swift.
 class FoundationModelsHostApi {
   /// Constructor for [FoundationModelsHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
@@ -422,6 +447,7 @@ class FoundationModelsHostApi {
 
   final String pigeonVar_messageChannelSuffix;
 
+  /// Generates one final response.
   Future<NativeGenerateResponse> generate(NativeGenerateRequest request) async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.generate$pigeonVar_messageChannelSuffix';
@@ -443,6 +469,7 @@ class FoundationModelsHostApi {
     return pigeonVar_replyValue! as NativeGenerateResponse;
   }
 
+  /// Starts a streaming generation and returns its request id.
   Future<String> startGenerateStream(NativeGenerateRequest request) async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.startGenerateStream$pigeonVar_messageChannelSuffix';
@@ -464,6 +491,7 @@ class FoundationModelsHostApi {
     return pigeonVar_replyValue! as String;
   }
 
+  /// Cancels a streaming generation by request id.
   Future<void> cancelGenerateStream(String requestId) async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.cancelGenerateStream$pigeonVar_messageChannelSuffix';
@@ -484,6 +512,7 @@ class FoundationModelsHostApi {
     );
   }
 
+  /// Returns whether the native system model is available now.
   Future<bool> isAvailable() async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.genkit_foundation_models.FoundationModelsHostApi.isAvailable$pigeonVar_messageChannelSuffix';
@@ -504,6 +533,7 @@ class FoundationModelsHostApi {
   }
 }
 
+/// Event-channel API implemented in Swift for streaming events.
 Stream<NativeGenerateStreamEvent> streamEvents({String instanceName = ''}) {
   if (instanceName.isNotEmpty) {
     instanceName = '.$instanceName';
