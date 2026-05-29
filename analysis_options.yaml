@@ -1,4 +1,24 @@
-include: package:flutter_lints/flutter.yaml
+# This file configures the static analysis results for your project (errors,
+# warnings, and lints).
+#
+# This enables the lints from `package:dart_flutter_team_lints`.
+# This set helps identify many issues that may lead to problems when running
+# or consuming Dart code, and enforces writing Dart using a single, idiomatic
+# style and format.
 
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+include: package:dart_flutter_team_lints/analysis_options.yaml
+
+analyzer:
+  language:
+    strict-inference: false
+
+  errors:
+    lines_longer_than_80_chars: ignore
+    prefer_const_constructors: ignore
+    unawaited_futures: ignore
+    unreachable_from_main: ignore
+
+linter:
+  rules:
+    - unnecessary_breaks
+    - unnecessary_ignore
