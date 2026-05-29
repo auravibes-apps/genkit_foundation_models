@@ -10,8 +10,8 @@ Pod::Spec.new do |s|
   s.source_files = 'genkit_foundation_models/Sources/genkit_foundation_models/**/*.swift'
   s.ios.dependency 'Flutter'
   s.osx.dependency 'FlutterMacOS'
-  s.ios.deployment_target = '26.0'
-  s.osx.deployment_target = '26.0'
+  s.ios.deployment_target = '13.0'
+  s.osx.deployment_target = '10.15'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
   s.swift_version = '5.0'
 end
