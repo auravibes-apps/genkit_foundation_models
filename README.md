@@ -30,8 +30,8 @@ streaming responses, multi-turn conversations, and Genkit-owned tool loops.
 - device or Mac eligible for Apple Intelligence
 - Apple Intelligence enabled and model assets ready on the device
 
-If the system model is not available, `PigeonFoundationModelsApi.isAvailable()`
-returns `false` or generation throws `FoundationModelsException` with a typed
+If the system model is not available, `FoundationModels.isAvailable()` returns
+`false` or generation throws `FoundationModelsException` with a typed
 `FoundationModelsErrorCode`.
 
 ## Install
@@ -101,7 +101,7 @@ import 'package:genkit_foundation_models/genkit_foundation_models.dart';
 
 Future<void> main() async {
   final ai = Genkit(
-    plugins: [FoundationModelsPlugin()],
+    plugins: [foundationModels],
     model: modelRef(FoundationModelsPlugin.defaultModelName),
   );
 
@@ -123,11 +123,10 @@ Future<void> main() async {
 
 ## Availability Check
 
-Use the native API wrapper before showing generation UI:
+Use the public availability facade before showing generation UI:
 
 ```dart
-final api = PigeonFoundationModelsApi();
-final available = await api.isAvailable();
+final available = await FoundationModels.isAvailable();
 ```
 
 Generation errors are mapped to typed Dart exceptions:
@@ -194,7 +193,7 @@ import 'package:genkit_foundation_models/genkit_foundation_models.dart';
 
 Future<void> main() async {
   final ai = Genkit(
-    plugins: [FoundationModelsPlugin()],
+    plugins: [foundationModels],
     model: modelRef(FoundationModelsPlugin.defaultModelName),
   );
 

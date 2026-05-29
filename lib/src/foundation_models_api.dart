@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'foundation_models_exception.dart';
 import 'pigeon/foundation_models_api.g.dart';
 
-/// Dart-facing interface for the native Apple Foundation Models bridge.
+/// Internal Dart-facing interface for the native Apple Foundation Models bridge.
 ///
 /// Implement this in tests to avoid platform channels, or use
 /// [PigeonFoundationModelsApi] to call the Swift implementation.
@@ -22,7 +22,7 @@ abstract interface class FoundationModelsApi {
   );
 }
 
-/// Platform-channel backed implementation of [FoundationModelsApi].
+/// Internal platform-channel backed implementation of [FoundationModelsApi].
 ///
 /// This class wraps the Pigeon-generated [FoundationModelsHostApi] and maps
 /// platform errors into [FoundationModelsException].
@@ -39,6 +39,7 @@ final class PigeonFoundationModelsApi implements FoundationModelsApi {
     try {
       return await _hostApi.isAvailable();
     } on PlatformException catch (error) {
+      if (_isMissingPlatformChannel(error)) return false;
       throw _foundationModelsException(error);
     }
   }
@@ -117,9 +118,18 @@ FoundationModelsErrorCode _errorCode(PlatformException error) {
     'generation_failed' => FoundationModelsErrorCode.generationFailed,
     'foundation_models_unavailable' when _isModelNotReady(error) =>
       FoundationModelsErrorCode.modelNotReady,
+    'channel-error' => FoundationModelsErrorCode.unavailable,
+    'missing-plugin' => FoundationModelsErrorCode.unavailable,
+    'MissingPluginException' => FoundationModelsErrorCode.unavailable,
     'foundation_models_unavailable' => FoundationModelsErrorCode.unavailable,
     _ => FoundationModelsErrorCode.generationFailed,
   };
+}
+
+bool _isMissingPlatformChannel(PlatformException error) {
+  return error.code == 'channel-error' ||
+      error.code == 'missing-plugin' ||
+      error.code == 'MissingPluginException';
 }
 
 bool _isModelNotReady(PlatformException error) {

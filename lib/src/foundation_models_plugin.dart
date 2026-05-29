@@ -1,18 +1,29 @@
 import 'package:genkit/plugin.dart';
+import 'package:meta/meta.dart';
 
 import 'foundation_models_api.dart';
 import 'foundation_models_exception.dart';
 import 'foundation_models_mapper.dart';
 import 'pigeon/foundation_models_api.g.dart';
 
+/// Ready-to-register Genkit plugin for Apple Foundation Models.
+///
+/// Use this in `Genkit(plugins: [foundationModels])` for the normal package
+/// setup, matching other Genkit provider packages.
+final foundationModels = FoundationModelsPlugin();
+
 /// Genkit plugin that exposes Apple's system language model.
 ///
-/// Register this plugin with `Genkit(plugins: [FoundationModelsPlugin()])` and
+/// Register this plugin with `Genkit(plugins: [foundationModels])` and
 /// use [defaultModelName] as the model reference.
 final class FoundationModelsPlugin extends GenkitPlugin {
-  /// Creates a plugin backed by [api], or by the default native Pigeon bridge.
-  FoundationModelsPlugin({FoundationModelsApi? api})
-    : _api = api ?? PigeonFoundationModelsApi();
+  /// Creates a plugin backed by the default native bridge.
+  FoundationModelsPlugin() : _api = PigeonFoundationModelsApi();
+
+  /// Creates a plugin backed by [api] for tests.
+  @visibleForTesting
+  FoundationModelsPlugin.testing({required FoundationModelsApi api})
+    : _api = api;
 
   /// Genkit provider namespace for this plugin.
   static const providerName = 'foundationModels';

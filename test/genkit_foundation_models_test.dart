@@ -1,12 +1,16 @@
 import 'package:flutter/services.dart';
 import 'package:genkit/genkit.dart';
 import 'package:genkit_foundation_models/genkit_foundation_models.dart';
+import 'package:genkit_foundation_models/src/foundation_models_api.dart';
+import 'package:genkit_foundation_models/src/pigeon/foundation_models_api.g.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('FoundationModelsPlugin', () {
     test('lists a text-only Genkit model action', () async {
-      final plugin = FoundationModelsPlugin(api: _FakeFoundationModelsApi());
+      final plugin = FoundationModelsPlugin.testing(
+        api: _FakeFoundationModelsApi(),
+      );
 
       final actions = await plugin.list();
 
@@ -26,7 +30,9 @@ void main() {
     });
 
     test('resolves only the default Foundation Models action', () {
-      final plugin = FoundationModelsPlugin(api: _FakeFoundationModelsApi());
+      final plugin = FoundationModelsPlugin.testing(
+        api: _FakeFoundationModelsApi(),
+      );
 
       expect(
         plugin.resolve('model', FoundationModelsPlugin.defaultModelName),
@@ -52,7 +58,7 @@ void main() {
             finishReason: 'stop',
           ),
         );
-        final plugin = FoundationModelsPlugin(api: api);
+        final plugin = FoundationModelsPlugin.testing(api: api);
         final model = plugin.model(FoundationModelsPlugin.defaultModelName);
 
         final response = await model(
@@ -91,7 +97,7 @@ void main() {
       );
       final genkit = Genkit(
         isDevEnv: false,
-        plugins: [FoundationModelsPlugin(api: api)],
+        plugins: [FoundationModelsPlugin.testing(api: api)],
         model: modelRef(FoundationModelsPlugin.defaultModelName),
       );
       addTearDown(genkit.shutdown);
@@ -116,7 +122,7 @@ void main() {
           ),
         ],
       );
-      final plugin = FoundationModelsPlugin(api: api);
+      final plugin = FoundationModelsPlugin.testing(api: api);
       final model = plugin.model(FoundationModelsPlugin.defaultModelName);
       final chunks = <ModelResponseChunk>[];
 
@@ -143,7 +149,7 @@ void main() {
           finishReason: 'stop',
         ),
       );
-      final plugin = FoundationModelsPlugin(api: api);
+      final plugin = FoundationModelsPlugin.testing(api: api);
       final model = plugin.model(FoundationModelsPlugin.defaultModelName);
 
       final response = await model(
@@ -184,7 +190,7 @@ void main() {
           finishReason: 'stop',
         ),
       );
-      final plugin = FoundationModelsPlugin(api: api);
+      final plugin = FoundationModelsPlugin.testing(api: api);
       final model = plugin.model(FoundationModelsPlugin.defaultModelName);
 
       final response = await model(
@@ -212,7 +218,7 @@ void main() {
           finishReason: 'stop',
         ),
       );
-      final plugin = FoundationModelsPlugin(api: api);
+      final plugin = FoundationModelsPlugin.testing(api: api);
       final model = plugin.model(FoundationModelsPlugin.defaultModelName);
 
       final response = await model(
@@ -246,7 +252,7 @@ void main() {
       );
       final genkit = Genkit(
         isDevEnv: false,
-        plugins: [FoundationModelsPlugin(api: api)],
+        plugins: [FoundationModelsPlugin.testing(api: api)],
         model: modelRef(FoundationModelsPlugin.defaultModelName),
       );
       addTearDown(genkit.shutdown);
@@ -288,7 +294,7 @@ void main() {
         );
         final genkit = Genkit(
           isDevEnv: false,
-          plugins: [FoundationModelsPlugin(api: api)],
+          plugins: [FoundationModelsPlugin.testing(api: api)],
           model: modelRef(FoundationModelsPlugin.defaultModelName),
         );
         addTearDown(genkit.shutdown);
@@ -323,7 +329,7 @@ void main() {
           finishReason: 'stop',
         ),
       );
-      final plugin = FoundationModelsPlugin(api: api);
+      final plugin = FoundationModelsPlugin.testing(api: api);
       final model = plugin.model(FoundationModelsPlugin.defaultModelName);
 
       await expectLater(
@@ -363,7 +369,9 @@ void main() {
     });
 
     test('fails early for unsupported request features', () async {
-      final plugin = FoundationModelsPlugin(api: _FakeFoundationModelsApi());
+      final plugin = FoundationModelsPlugin.testing(
+        api: _FakeFoundationModelsApi(),
+      );
       final model = plugin.model(FoundationModelsPlugin.defaultModelName);
 
       Future<void> expectUnsupported(ModelRequest request) async {
@@ -448,6 +456,29 @@ void main() {
           message: 'FoundationModels assets are not ready.',
         ),
         FoundationModelsErrorCode.modelNotReady,
+      );
+    });
+
+    test('returns unavailable on platforms without a native channel', () async {
+      final api = PigeonFoundationModelsApi(
+        hostApi: _ThrowingFoundationModelsHostApi(
+          PlatformException(
+            code: 'channel-error',
+            message: 'Unable to establish connection on channel.',
+          ),
+        ),
+      );
+
+      expect(await api.isAvailable(), isFalse);
+      await expectLater(
+        api.generate(NativeGenerateRequest(messages: [])),
+        throwsA(
+          isA<FoundationModelsException>().having(
+            (error) => error.code,
+            'code',
+            FoundationModelsErrorCode.unavailable,
+          ),
+        ),
       );
     });
   });

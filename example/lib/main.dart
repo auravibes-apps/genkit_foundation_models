@@ -36,7 +36,6 @@ final class _GeneratePageState extends State<GeneratePage> {
         'Use the current_time tool, then answer normally with a two sentence welcome message for a Genkit plugin.',
   );
   final _scrollController = ScrollController();
-  final _nativeApi = PigeonFoundationModelsApi();
   late final Tool<Map<String, dynamic>?, Map<String, String>> _currentTimeTool;
   late final Genkit _genkit;
 
@@ -59,7 +58,7 @@ final class _GeneratePageState extends State<GeneratePage> {
     );
     _genkit = Genkit(
       isDevEnv: false,
-      plugins: [FoundationModelsPlugin()],
+      plugins: [foundationModels],
       model: modelRef(FoundationModelsPlugin.defaultModelName),
     );
     unawaited(_checkAvailability());
@@ -75,7 +74,7 @@ final class _GeneratePageState extends State<GeneratePage> {
 
   Future<void> _checkAvailability() async {
     try {
-      final isAvailable = await _nativeApi.isAvailable();
+      final isAvailable = await FoundationModels.isAvailable();
       if (!mounted) return;
       setState(() => _isAvailable = isAvailable);
     } catch (error) {
