@@ -1,5 +1,10 @@
-/// A Calculator.
-class Calculator {
-  /// Returns [value] plus 1.
-  int addOne(int value) => value + 1;
-}
+export 'src/foundation_models_api.dart';
+export 'src/foundation_models_exception.dart';
+export 'src/foundation_models_plugin.dart';
+export 'src/pigeon/foundation_models_api.g.dart'
+    show
+        FoundationModelsHostApi,
+        NativeGenerateRequest,
+        NativeGenerateResponse,
+        NativeMessage,
+        NativePart;
