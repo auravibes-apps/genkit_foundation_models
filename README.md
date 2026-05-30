@@ -1,5 +1,11 @@
 # genkit_foundation_models
 
+[![pub package](https://img.shields.io/pub/v/genkit_foundation_models.svg)](https://pub.dev/packages/genkit_foundation_models)
+[![CI](https://github.com/auravibes-apps/genkit_foundation_models/actions/workflows/ci.yml/badge.svg)](https://github.com/auravibes-apps/genkit_foundation_models/actions/workflows/ci.yml)
+[![Publish](https://github.com/auravibes-apps/genkit_foundation_models/actions/workflows/publish.yml/badge.svg)](https://github.com/auravibes-apps/genkit_foundation_models/actions/workflows/publish.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/github-auravibes--apps%2Fgenkit__foundation__models-24292f.svg)](https://github.com/auravibes-apps/genkit_foundation_models)
+
 `genkit_foundation_models` is a Genkit Dart provider for Apple's on-device
 Foundation Models framework.
 
