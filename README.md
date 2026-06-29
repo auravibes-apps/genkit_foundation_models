@@ -29,7 +29,7 @@ streaming responses, multi-turn conversations, and Genkit-owned tool loops.
 - Flutter app target, not a pure Dart CLI app
 - Dart SDK `^3.11.0`
 - Flutter `>=3.41.0` for Swift Package Manager plugin support
-- `genkit: ^0.13.2`
+- `genkit: ^0.14.1`
 - Xcode 26.5 SDK or newer with `FoundationModels.framework`
 - iOS 13.0 or macOS 10.15 minimum deployment target for app compatibility
 - iOS 26.0 or macOS 26.0 at runtime for Foundation Models generation
@@ -46,7 +46,7 @@ Add the package to a Flutter app:
 
 ```yaml
 dependencies:
-  genkit: ^0.13.2
+  genkit: ^0.14.1
   genkit_foundation_models:
     git:
       url: https://github.com/auravibes-apps/genkit_foundation_models.git

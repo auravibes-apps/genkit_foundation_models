@@ -1,3 +1,8 @@
+## 0.0.3
+
+* Fixed streamed tool-call parsing so split `<tool_call>` tags are converted to Genkit tool requests instead of visible text.
+* Added support for `genkit: ^0.14.1`.
+
 ## 0.0.2
 
 * Added the `foundationModels` plugin facade for provider-style Genkit setup.
