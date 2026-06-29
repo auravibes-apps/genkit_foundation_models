@@ -255,43 +255,49 @@ void main() {
       expect(toolRequest?.input, {'q': 'aura'});
     });
 
-    test('extracts multiple tagged tool calls from native text responses', () async {
-      final api = _FakeFoundationModelsApi(
-        response: NativeGenerateResponse(
-          parts: [
-            NativePart(
-              text:
-                  '<tool_call>{"name":"first","arguments":{"q":"a"}}</tool_call>'
-                  '<tool_call>{"name":"second","arguments":{"q":"b"}}</tool_call>',
-            ),
-          ],
-          finishReason: 'stop',
-        ),
-      );
-      final plugin = FoundationModelsPlugin.testing(api: api);
-      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+    test(
+      'extracts multiple tagged tool calls from native text responses',
+      () async {
+        final api = _FakeFoundationModelsApi(
+          response: NativeGenerateResponse(
+            parts: [
+              NativePart(
+                text:
+                    '<tool_call>{"name":"first","arguments":{"q":"a"}}</tool_call>'
+                    '<tool_call>{"name":"second","arguments":{"q":"b"}}</tool_call>',
+              ),
+            ],
+            finishReason: 'stop',
+          ),
+        );
+        final plugin = FoundationModelsPlugin.testing(api: api);
+        final model = plugin.model(FoundationModelsPlugin.defaultModelName);
 
-      final response = await model(
-        ModelRequest(
-          messages: _textMessages,
-          tools: [
-            ToolDefinition(name: 'first', description: 'First lookup'),
-            ToolDefinition(name: 'second', description: 'Second lookup'),
-          ],
-        ),
-      );
+        final response = await model(
+          ModelRequest(
+            messages: _textMessages,
+            tools: [
+              ToolDefinition(name: 'first', description: 'First lookup'),
+              ToolDefinition(name: 'second', description: 'Second lookup'),
+            ],
+          ),
+        );
 
-      expect(response.text, isEmpty);
-      final toolRequests = response.message?.content
-          .map((part) => part.toolRequest)
-          .nonNulls
-          .toList();
-      expect(toolRequests?.map((request) => request.name), ['first', 'second']);
-      expect(toolRequests?.map((request) => request.input), [
-        {'q': 'a'},
-        {'q': 'b'},
-      ]);
-    });
+        expect(response.text, isEmpty);
+        final toolRequests = response.message?.content
+            .map((part) => part.toolRequest)
+            .nonNulls
+            .toList();
+        expect(toolRequests?.map((request) => request.name), [
+          'first',
+          'second',
+        ]);
+        expect(toolRequests?.map((request) => request.input), [
+          {'q': 'a'},
+          {'q': 'b'},
+        ]);
+      },
+    );
 
     test(
       'extracts native url tool calls from final inline text responses',
