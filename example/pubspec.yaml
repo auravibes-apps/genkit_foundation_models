@@ -11,6 +11,7 @@ dependencies:
   genkit: ^0.14.1
   genkit_foundation_models:
     path: ..
+    version: 0.0.3
 
 dev_dependencies:
   dart_flutter_team_lints: ^3.0.0
