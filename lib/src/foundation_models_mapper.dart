@@ -76,6 +76,119 @@ ModelResponseChunk toModelResponseChunk(
   );
 }
 
+final class FoundationModelsStreamNormalizer {
+  String _textBuffer = '';
+
+  Iterable<ModelResponseChunk> add(
+    NativeGenerateStreamEvent event, {
+    Iterable<String>? allowedToolNames,
+    Iterable<String>? completedToolNames,
+  }) sync* {
+    if (event.errorCode != null) {
+      throw FoundationModelsException(
+        _toErrorCode(event.errorCode!),
+        event.errorMessage ?? event.errorCode!,
+      );
+    }
+
+    final content = <Part>[];
+    for (final part in event.parts ?? const <NativePart>[]) {
+      if (part.text == null) {
+        content.addAll(
+          _toGenkitPart(
+            part,
+            allowedToolNames: allowedToolNames,
+            completedToolNames: completedToolNames,
+          ),
+        );
+        continue;
+      }
+      content.addAll(
+        _streamTextParts(
+          part.text!,
+          allowedToolNames: allowedToolNames,
+          completedToolNames: completedToolNames,
+        ),
+      );
+    }
+
+    if (content.isNotEmpty) {
+      yield ModelResponseChunk(role: Role.model, content: content);
+    }
+  }
+
+  ModelResponseChunk? flush({
+    Iterable<String>? allowedToolNames,
+    Iterable<String>? completedToolNames,
+  }) {
+    if (_textBuffer.isEmpty) return null;
+
+    final content = _textToGenkitParts(
+      _textBuffer,
+      allowedToolNames: allowedToolNames,
+      completedToolNames: completedToolNames,
+    );
+    _textBuffer = '';
+    return ModelResponseChunk(role: Role.model, content: content);
+  }
+
+  List<Part> _streamTextParts(
+    String text, {
+    Iterable<String>? allowedToolNames,
+    Iterable<String>? completedToolNames,
+  }) {
+    _textBuffer += text;
+    final parts = <Part>[];
+
+    while (_textBuffer.isNotEmpty) {
+      final start = _textBuffer.indexOf(_toolCallStart);
+      if (start == -1) {
+        final keep = _toolCallStartPrefixLength(_textBuffer);
+        final emit = _textBuffer.substring(0, _textBuffer.length - keep);
+        _textBuffer = _textBuffer.substring(_textBuffer.length - keep);
+        if (emit.isNotEmpty) parts.add(TextPart(text: emit));
+        return parts;
+      }
+
+      if (start > 0) {
+        parts.add(TextPart(text: _textBuffer.substring(0, start)));
+        _textBuffer = _textBuffer.substring(start);
+        continue;
+      }
+
+      final end = _textBuffer.indexOf(_toolCallEnd);
+      if (end == -1) return parts;
+
+      final complete = _textBuffer.substring(0, end + _toolCallEnd.length);
+      parts.addAll(
+        _textToGenkitParts(
+          complete,
+          allowedToolNames: allowedToolNames,
+          completedToolNames: completedToolNames,
+        ),
+      );
+      _textBuffer = _textBuffer.substring(end + _toolCallEnd.length);
+    }
+
+    return parts;
+  }
+}
+
+const _toolCallStart = '<tool_call';
+const _toolCallEnd = '</tool_call>';
+
+int _toolCallStartPrefixLength(String text) {
+  final maxLength = text.length < _toolCallStart.length
+      ? text.length
+      : _toolCallStart.length - 1;
+  for (var length = maxLength; length > 0; length--) {
+    if (text.endsWith(_toolCallStart.substring(0, length))) {
+      return length;
+    }
+  }
+  return 0;
+}
+
 void _assertSupportedRequest(ModelRequest request) {
   if (request.toolChoice != null) {
     _unsupported('Tool choice is not supported yet.');

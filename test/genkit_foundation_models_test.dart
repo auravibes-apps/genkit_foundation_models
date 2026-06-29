@@ -137,6 +137,55 @@ void main() {
       expect(response.message?.content.single.text, 'hello');
     });
 
+    test('streams split inline tool calls as tool request chunks', () async {
+      final inlineToolCall =
+          '<tool_call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}</tool_call>';
+      final api = _FakeFoundationModelsApi(
+        streamEvents: [
+          NativeGenerateStreamEvent(parts: [NativePart(text: '<tool_')]),
+          NativeGenerateStreamEvent(
+            parts: [
+              NativePart(
+                text:
+                    'call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}',
+              ),
+            ],
+          ),
+          NativeGenerateStreamEvent(parts: [NativePart(text: '</tool_call>')]),
+          NativeGenerateStreamEvent(
+            done: true,
+            response: NativeGenerateResponse(
+              parts: [NativePart(text: inlineToolCall)],
+              finishReason: 'stop',
+            ),
+          ),
+        ],
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+      final chunks = <ModelResponseChunk>[];
+
+      final response = await model(
+        ModelRequest(
+          messages: _textMessages,
+          tools: [ToolDefinition(name: 'native_url', description: 'Open URL')],
+        ),
+        onChunk: chunks.add,
+      );
+
+      expect(
+        chunks.expand((chunk) => chunk.content).map((part) => part.text),
+        isNot(contains(contains('tool_call'))),
+      );
+      final streamedToolRequests = chunks
+          .expand((chunk) => chunk.content)
+          .map((part) => part.toolRequest)
+          .nonNulls;
+      expect(streamedToolRequests.single.name, 'native_url');
+      expect(response.text, isEmpty);
+      expect(response.message?.content.single.toolRequest?.name, 'native_url');
+    });
+
     test('maps Genkit tool declarations and native tool requests', () async {
       final api = _FakeFoundationModelsApi(
         response: NativeGenerateResponse(
@@ -204,6 +253,97 @@ void main() {
       final toolRequest = response.message?.content.single.toolRequest;
       expect(toolRequest?.name, 'lookup');
       expect(toolRequest?.input, {'q': 'aura'});
+    });
+
+    test('extracts multiple tagged tool calls from native text responses', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [
+            NativePart(
+              text:
+                  '<tool_call>{"name":"first","arguments":{"q":"a"}}</tool_call>'
+                  '<tool_call>{"name":"second","arguments":{"q":"b"}}</tool_call>',
+            ),
+          ],
+          finishReason: 'stop',
+        ),
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      final response = await model(
+        ModelRequest(
+          messages: _textMessages,
+          tools: [
+            ToolDefinition(name: 'first', description: 'First lookup'),
+            ToolDefinition(name: 'second', description: 'Second lookup'),
+          ],
+        ),
+      );
+
+      expect(response.text, isEmpty);
+      final toolRequests = response.message?.content
+          .map((part) => part.toolRequest)
+          .nonNulls
+          .toList();
+      expect(toolRequests?.map((request) => request.name), ['first', 'second']);
+      expect(toolRequests?.map((request) => request.input), [
+        {'q': 'a'},
+        {'q': 'b'},
+      ]);
+    });
+
+    test(
+      'extracts native url tool calls from final inline text responses',
+      () async {
+        final api = _FakeFoundationModelsApi(
+          response: NativeGenerateResponse(
+            parts: [
+              NativePart(
+                text:
+                    '<tool_call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}</tool_call>',
+              ),
+            ],
+            finishReason: 'stop',
+          ),
+        );
+        final plugin = FoundationModelsPlugin.testing(api: api);
+        final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+        final response = await model(
+          ModelRequest(
+            messages: _textMessages,
+            tools: [
+              ToolDefinition(name: 'native_url', description: 'Open URL'),
+            ],
+          ),
+        );
+
+        expect(response.text, isEmpty);
+        expect(response.text, isNot(contains('<tool_call>')));
+        final toolRequest = response.message?.content.single.toolRequest;
+        expect(toolRequest?.name, 'native_url');
+        expect(toolRequest?.input, {
+          'input': {'url': 'https://example.com'},
+        });
+      },
+    );
+
+    test('keeps invalid inline tool call json as text', () async {
+      const invalidToolCall = '<tool_call>{not json}</tool_call>';
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [NativePart(text: invalidToolCall)],
+          finishReason: 'stop',
+        ),
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      final response = await model(ModelRequest(messages: _textMessages));
+
+      expect(response.message?.content.single.text, invalidToolCall);
+      expect(response.text, invalidToolCall);
     });
 
     test('strips tagged tool calls from visible native text', () async {

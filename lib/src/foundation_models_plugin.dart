@@ -67,18 +67,27 @@ final class FoundationModelsPlugin extends GenkitPlugin {
         final completedToolNames = _completedToolNames(request);
         if (context.streamingRequested) {
           NativeGenerateResponse? finalResponse;
+          final streamNormalizer = FoundationModelsStreamNormalizer();
           await for (final event in _api.streamGenerate(nativeRequest)) {
             if (event.done ?? false) {
               finalResponse = event.response;
               continue;
             }
-            context.sendChunk(
-              toModelResponseChunk(
-                event,
-                allowedToolNames: allowedToolNames,
-                completedToolNames: completedToolNames,
-              ),
-            );
+            for (final chunk in streamNormalizer.add(
+              event,
+              allowedToolNames: allowedToolNames,
+              completedToolNames: completedToolNames,
+            )) {
+              context.sendChunk(chunk);
+            }
+          }
+
+          final bufferedChunk = streamNormalizer.flush(
+            allowedToolNames: allowedToolNames,
+            completedToolNames: completedToolNames,
+          );
+          if (bufferedChunk != null) {
+            context.sendChunk(bufferedChunk);
           }
 
           if (finalResponse == null) {
