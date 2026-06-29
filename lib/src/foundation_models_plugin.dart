@@ -68,7 +68,15 @@ final class FoundationModelsPlugin extends GenkitPlugin {
         if (context.streamingRequested) {
           NativeGenerateResponse? finalResponse;
           final streamNormalizer = FoundationModelsStreamNormalizer();
+          final streamedContent = <Part>[];
           await for (final event in _api.streamGenerate(nativeRequest)) {
+            if (event.errorCode != null) {
+              for (final _ in streamNormalizer.add(
+                event,
+                allowedToolNames: allowedToolNames,
+                completedToolNames: completedToolNames,
+              )) {}
+            }
             if (event.done ?? false) {
               finalResponse = event.response;
               continue;
@@ -78,6 +86,7 @@ final class FoundationModelsPlugin extends GenkitPlugin {
               allowedToolNames: allowedToolNames,
               completedToolNames: completedToolNames,
             )) {
+              streamedContent.addAll(chunk.content);
               context.sendChunk(chunk);
             }
           }
@@ -87,10 +96,17 @@ final class FoundationModelsPlugin extends GenkitPlugin {
             completedToolNames: completedToolNames,
           );
           if (bufferedChunk != null) {
+            streamedContent.addAll(bufferedChunk.content);
             context.sendChunk(bufferedChunk);
           }
 
           if (finalResponse == null) {
+            if (streamedContent.isNotEmpty) {
+              return ModelResponse(
+                finishReason: FinishReason.stop,
+                message: Message(role: Role.model, content: streamedContent),
+              );
+            }
             throw const FoundationModelsException(
               FoundationModelsErrorCode.generationFailed,
               'Native stream ended without a final response.',

@@ -137,6 +137,59 @@ void main() {
       expect(response.message?.content.single.text, 'hello');
     });
 
+    test('streams repeated identical text chunks', () async {
+      final api = _FakeFoundationModelsApi(
+        streamEvents: [
+          NativeGenerateStreamEvent(parts: [NativePart(text: 'ha')]),
+          NativeGenerateStreamEvent(parts: [NativePart(text: 'ha')]),
+          NativeGenerateStreamEvent(
+            done: true,
+            response: NativeGenerateResponse(
+              parts: [NativePart(text: 'haha')],
+              finishReason: 'stop',
+            ),
+          ),
+        ],
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+      final chunks = <ModelResponseChunk>[];
+
+      final response = await model(
+        ModelRequest(messages: _textMessages),
+        onChunk: chunks.add,
+      );
+
+      expect(chunks.map((chunk) => chunk.content.single.text), ['ha', 'ha']);
+      expect(response.message?.content.single.text, 'haha');
+    });
+
+    test('throws native errors from done stream events', () async {
+      final api = _FakeFoundationModelsApi(
+        streamEvents: [
+          NativeGenerateStreamEvent(parts: [NativePart(text: 'partial')]),
+          NativeGenerateStreamEvent(
+            done: true,
+            errorCode: 'generation_blocked',
+            errorMessage: 'blocked',
+          ),
+        ],
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      await expectLater(
+        model(ModelRequest(messages: _textMessages), onChunk: (_) {}),
+        throwsA(
+          isA<FoundationModelsException>().having(
+            (error) => error.code,
+            'code',
+            FoundationModelsErrorCode.blocked,
+          ),
+        ),
+      );
+    });
+
     test('streams split inline tool calls as tool request chunks', () async {
       final inlineToolCall =
           '<tool_call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}</tool_call>';
@@ -181,6 +234,208 @@ void main() {
           .expand((chunk) => chunk.content)
           .map((part) => part.toolRequest)
           .nonNulls;
+      expect(streamedToolRequests.single.name, 'native_url');
+      expect(response.text, isEmpty);
+      expect(response.message?.content.single.toolRequest?.name, 'native_url');
+    });
+
+    test(
+      'generateStream parses final inline tool calls without exposing text',
+      () async {
+        const inlineToolCall =
+            '<tool_call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}</tool_call>';
+        final api = _FakeFoundationModelsApi(
+          streamEvents: [
+            NativeGenerateStreamEvent(
+              done: true,
+              response: NativeGenerateResponse(
+                parts: [NativePart(text: inlineToolCall)],
+                finishReason: 'stop',
+              ),
+            ),
+          ],
+        );
+        final genkit = Genkit(
+          isDevEnv: false,
+          plugins: [FoundationModelsPlugin.testing(api: api)],
+          model: modelRef(FoundationModelsPlugin.defaultModelName),
+        );
+        addTearDown(genkit.shutdown);
+        final chunks = <GenerateResponseChunk>[];
+
+        final stream = genkit.generateStream(
+          prompt: 'Open https://example.com',
+          tools: [_nativeUrlTool],
+          returnToolRequests: true,
+        );
+        await stream.listen(chunks.add).asFuture<void>();
+        final response = await stream.onResult;
+
+        expect(
+          chunks.expand((chunk) => chunk.content).map((part) => part.text),
+          isNot(contains(contains('<tool_call>'))),
+        );
+        expect(response.text, isEmpty);
+        final toolRequest = response.message?.content.single.toolRequest;
+        expect(toolRequest?.name, 'native_url');
+        expect(toolRequest?.input, {
+          'input': {'url': 'https://example.com'},
+        });
+      },
+    );
+
+    test(
+      'generateStream parses split inline tool calls without exposing text',
+      () async {
+        const inlineToolCall =
+            '<tool_call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}</tool_call>';
+        final api = _FakeFoundationModelsApi(
+          streamEvents: [
+            NativeGenerateStreamEvent(parts: [NativePart(text: '<tool_')]),
+            NativeGenerateStreamEvent(
+              parts: [
+                NativePart(
+                  text:
+                      'call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}',
+                ),
+              ],
+            ),
+            NativeGenerateStreamEvent(
+              parts: [NativePart(text: '</tool_call>')],
+            ),
+            NativeGenerateStreamEvent(
+              done: true,
+              response: NativeGenerateResponse(
+                parts: [NativePart(text: inlineToolCall)],
+                finishReason: 'stop',
+              ),
+            ),
+          ],
+        );
+        final genkit = Genkit(
+          isDevEnv: false,
+          plugins: [FoundationModelsPlugin.testing(api: api)],
+          model: modelRef(FoundationModelsPlugin.defaultModelName),
+        );
+        addTearDown(genkit.shutdown);
+        final chunks = <GenerateResponseChunk>[];
+
+        final stream = genkit.generateStream(
+          prompt: 'Open https://example.com',
+          tools: [_nativeUrlTool],
+          returnToolRequests: true,
+        );
+        await stream.listen(chunks.add).asFuture<void>();
+        final response = await stream.onResult;
+
+        expect(
+          chunks.expand((chunk) => chunk.content).map((part) => part.text),
+          isNot(contains(contains('<tool_call>'))),
+        );
+        final streamedToolRequests = chunks
+            .expand((chunk) => chunk.content)
+            .map((part) => part.toolRequest)
+            .nonNulls
+            .toList();
+        expect(streamedToolRequests.single.name, 'native_url');
+        expect(response.text, isEmpty);
+        expect(
+          response.message?.content.single.toolRequest?.name,
+          'native_url',
+        );
+      },
+    );
+
+    test(
+      'generateStream returns streamed tool call when final done is missing',
+      () async {
+        const inlineToolCall =
+            '<tool_call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}</tool_call>';
+        final api = _FakeFoundationModelsApi(
+          streamEvents: [
+            NativeGenerateStreamEvent(
+              parts: [NativePart(text: inlineToolCall)],
+            ),
+          ],
+        );
+        final genkit = Genkit(
+          isDevEnv: false,
+          plugins: [FoundationModelsPlugin.testing(api: api)],
+          model: modelRef(FoundationModelsPlugin.defaultModelName),
+        );
+        addTearDown(genkit.shutdown);
+        final chunks = <GenerateResponseChunk>[];
+
+        final stream = genkit.generateStream(
+          prompt: 'Use the current_time tool',
+          tools: [_nativeUrlTool],
+          returnToolRequests: true,
+        );
+        await stream.listen(chunks.add).asFuture<void>();
+        final response = await stream.onResult;
+
+        expect(
+          chunks.expand((chunk) => chunk.content).map((part) => part.text),
+          isNot(contains(contains('<tool_call>'))),
+        );
+        final streamedToolRequests = chunks
+            .expand((chunk) => chunk.content)
+            .map((part) => part.toolRequest)
+            .nonNulls
+            .toList();
+        expect(streamedToolRequests.single.name, 'native_url');
+        expect(response.text, isEmpty);
+        expect(
+          response.message?.content.single.toolRequest?.name,
+          'native_url',
+        );
+      },
+    );
+
+    test('generateStream parses cumulative inline tool call snapshots', () async {
+      const inlineToolCall =
+          '<tool_call>{"name":"native_url","arguments":{"input":{"url":"https://example.com"}}}</tool_call>';
+      final api = _FakeFoundationModelsApi(
+        streamEvents: [
+          NativeGenerateStreamEvent(parts: [NativePart(text: '<tool')]),
+          NativeGenerateStreamEvent(
+            parts: [NativePart(text: '<tool_call>{"name":"native_url"')],
+          ),
+          NativeGenerateStreamEvent(parts: [NativePart(text: inlineToolCall)]),
+          NativeGenerateStreamEvent(
+            done: true,
+            response: NativeGenerateResponse(
+              parts: [NativePart(text: inlineToolCall)],
+              finishReason: 'stop',
+            ),
+          ),
+        ],
+      );
+      final genkit = Genkit(
+        isDevEnv: false,
+        plugins: [FoundationModelsPlugin.testing(api: api)],
+        model: modelRef(FoundationModelsPlugin.defaultModelName),
+      );
+      addTearDown(genkit.shutdown);
+      final chunks = <GenerateResponseChunk>[];
+
+      final stream = genkit.generateStream(
+        prompt: 'Open https://example.com',
+        tools: [_nativeUrlTool],
+        returnToolRequests: true,
+      );
+      await stream.listen(chunks.add).asFuture<void>();
+      final response = await stream.onResult;
+
+      expect(
+        chunks.expand((chunk) => chunk.content).map((part) => part.text),
+        isNot(contains(contains('<tool_call>'))),
+      );
+      final streamedToolRequests = chunks
+          .expand((chunk) => chunk.content)
+          .map((part) => part.toolRequest)
+          .nonNulls
+          .toList();
       expect(streamedToolRequests.single.name, 'native_url');
       expect(response.text, isEmpty);
       expect(response.message?.content.single.toolRequest?.name, 'native_url');
@@ -636,6 +891,12 @@ final _textMessages = [
     content: [TextPart(text: 'Hello')],
   ),
 ];
+
+final _nativeUrlTool = Tool<Map<String, dynamic>, Map<String, String>>(
+  name: 'native_url',
+  description: 'Open URL',
+  fn: (input, _) async => {'url': input.toString()},
+);
 
 final class _FakeFoundationModelsApi implements FoundationModelsApi {
   _FakeFoundationModelsApi({

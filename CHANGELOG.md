@@ -1,3 +1,8 @@
+## 0.0.4
+
+* Fixed cumulative streamed Foundation Models snapshots so inline tool calls are converted to Genkit tool requests instead of visible text.
+* Fixed streams that end after a tool-call chunk without a native final response.
+
 ## 0.0.3
 
 * Fixed streamed tool-call parsing so split `<tool_call>` tags are converted to Genkit tool requests instead of visible text.

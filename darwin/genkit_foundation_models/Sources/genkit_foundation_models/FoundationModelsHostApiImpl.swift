@@ -128,11 +128,18 @@ final class FoundationModelsHostApiImpl: FoundationModelsHostApi {
           )
           let stream = session.streamResponse(to: prompt, options: options)
           let shouldStreamText = request.toolsJson == nil
+          var previousContent = ""
           for try await snapshot in stream {
             if !shouldStreamText { continue }
+            let content = snapshot.content
+            let delta = content.hasPrefix(previousContent)
+              ? String(content.dropFirst(previousContent.count))
+              : content
+            previousContent = content
+            if delta.isEmpty { continue }
             streamHandler?.send(NativeGenerateStreamEvent(
               requestId: requestId,
-              parts: [NativePart(text: snapshot.content, toolRequestJson: nil, toolResponseJson: nil)],
+              parts: [NativePart(text: delta, toolRequestJson: nil, toolResponseJson: nil)],
               done: false,
               response: nil,
               errorCode: nil,

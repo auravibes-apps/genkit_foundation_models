@@ -103,9 +103,11 @@ final class FoundationModelsStreamNormalizer {
         );
         continue;
       }
+      final text = _streamDelta(part.text!);
+      if (text.isEmpty) continue;
       content.addAll(
         _streamTextParts(
-          part.text!,
+          text,
           allowedToolNames: allowedToolNames,
           completedToolNames: completedToolNames,
         ),
@@ -171,6 +173,13 @@ final class FoundationModelsStreamNormalizer {
     }
 
     return parts;
+  }
+
+  String _streamDelta(String text) {
+    final delta = _textBuffer.isNotEmpty && text.startsWith(_textBuffer)
+        ? text.substring(_textBuffer.length)
+        : text;
+    return delta;
   }
 }
 
