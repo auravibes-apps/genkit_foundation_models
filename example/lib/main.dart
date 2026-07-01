@@ -314,36 +314,39 @@ final class _GeneratePageState extends State<GeneratePage> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text('Apple Foundation Models: $availability'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: _items.isEmpty ? null : _copyLog,
-                          icon: const Icon(Icons.copy, size: 18),
-                          label: const Text('Copy log'),
-                        ),
-                        const SizedBox(width: 8),
-                        FilterChip(
-                          label: const Text('Debug'),
-                          selected: _showDebug,
-                          onSelected: (value) =>
-                              setState(() => _showDebug = value),
-                        ),
-                        const SizedBox(width: 8),
-                        FilterChip(
-                          label: const Text('Errors'),
-                          selected: _showErrors,
-                          onSelected: (value) =>
-                              setState(() => _showErrors = value),
-                        ),
-                        const SizedBox(width: 8),
-                        FilterChip(
-                          label: const Text('Single phase'),
-                          selected: _singlePhaseToolLoop,
-                          onSelected: (value) =>
-                              setState(() => _singlePhaseToolLoop = value),
+                        Text('Apple Foundation Models: $availability'),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _items.isEmpty ? null : _copyLog,
+                              icon: const Icon(Icons.copy, size: 18),
+                              label: const Text('Copy log'),
+                            ),
+                            FilterChip(
+                              label: const Text('Debug'),
+                              selected: _showDebug,
+                              onSelected: (value) =>
+                                  setState(() => _showDebug = value),
+                            ),
+                            FilterChip(
+                              label: const Text('Errors'),
+                              selected: _showErrors,
+                              onSelected: (value) =>
+                                  setState(() => _showErrors = value),
+                            ),
+                            FilterChip(
+                              label: const Text('Single phase'),
+                              selected: _singlePhaseToolLoop,
+                              onSelected: (value) =>
+                                  setState(() => _singlePhaseToolLoop = value),
+                            ),
+                          ],
                         ),
                       ],
                     ),

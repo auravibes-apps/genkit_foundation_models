@@ -13,8 +13,14 @@ void _assertSupportedRequest(ModelRequest request) {
 
   for (final message in request.messages) {
     for (final part in message.content) {
-      if (_nativePartKind(part.toJson()) != null) continue;
-      _unsupported('Only text and tool message parts are supported.');
+      final kind = _nativePartKind(part.toJson());
+      if (kind == null) {
+        _unsupported('Only text and tool message parts are supported.');
+      }
+      if (message.role.value == Role.system.value &&
+          kind != _NativePartKind.text) {
+        _unsupported('Only text system message parts are supported.');
+      }
     }
   }
 }

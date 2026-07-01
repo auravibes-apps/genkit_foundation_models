@@ -950,6 +950,25 @@ void main() {
           ],
         ),
       );
+      await expectUnsupported(
+        ModelRequest(
+          messages: [
+            Message(
+              role: Role.system,
+              content: [
+                ToolRequestPart(
+                  toolRequest: ToolRequest(
+                    ref: 'call-1',
+                    name: 'current_time',
+                    input: {},
+                  ),
+                ),
+              ],
+            ),
+            ..._textMessages,
+          ],
+        ),
+      );
     });
 
     test('maps native availability errors to typed exceptions', () async {
