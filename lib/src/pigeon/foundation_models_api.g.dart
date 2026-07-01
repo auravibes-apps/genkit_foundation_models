@@ -115,7 +115,7 @@ class NativeGenerateRequest {
   /// JSON-encoded generation config such as temperature or token limit.
   String? configJson;
 
-  /// JSON-encoded tool declarations for formatted tool-call prompting.
+  /// JSON-encoded tool declarations for native tool capture.
   String? toolsJson;
 
   List<Object?> _toList() {
@@ -211,7 +211,14 @@ class NativeMessage {
 
 /// One native message or response part.
 class NativePart {
-  NativePart({this.text, this.toolRequestJson, this.toolResponseJson});
+  NativePart({
+    this.text,
+    this.toolRequestJson,
+    this.toolResponseJson,
+    this.reasoningText,
+    this.metadataJson,
+    this.customJson,
+  });
 
   /// Plain text content.
   String? text;
@@ -222,8 +229,24 @@ class NativePart {
   /// JSON-encoded Genkit tool response.
   String? toolResponseJson;
 
+  /// Native reasoning/debug text. Never assistant-visible response text.
+  String? reasoningText;
+
+  /// JSON-encoded metadata for this part.
+  String? metadataJson;
+
+  /// JSON-encoded custom data for this part.
+  String? customJson;
+
   List<Object?> _toList() {
-    return <Object?>[text, toolRequestJson, toolResponseJson];
+    return <Object?>[
+      text,
+      toolRequestJson,
+      toolResponseJson,
+      reasoningText,
+      metadataJson,
+      customJson,
+    ];
   }
 
   Object encode() {
@@ -236,6 +259,9 @@ class NativePart {
       text: result[0] as String?,
       toolRequestJson: result[1] as String?,
       toolResponseJson: result[2] as String?,
+      reasoningText: result[3] as String?,
+      metadataJson: result[4] as String?,
+      customJson: result[5] as String?,
     );
   }
 
@@ -250,7 +276,10 @@ class NativePart {
     }
     return _deepEquals(text, other.text) &&
         _deepEquals(toolRequestJson, other.toolRequestJson) &&
-        _deepEquals(toolResponseJson, other.toolResponseJson);
+        _deepEquals(toolResponseJson, other.toolResponseJson) &&
+        _deepEquals(reasoningText, other.reasoningText) &&
+        _deepEquals(metadataJson, other.metadataJson) &&
+        _deepEquals(customJson, other.customJson);
   }
 
   @override
@@ -259,7 +288,7 @@ class NativePart {
 
   @override
   String toString() {
-    return 'NativePart(text: $text, toolRequestJson: $toolRequestJson, toolResponseJson: $toolResponseJson)';
+    return 'NativePart(text: $text, toolRequestJson: $toolRequestJson, toolResponseJson: $toolResponseJson, reasoningText: $reasoningText, metadataJson: $metadataJson, customJson: $customJson)';
   }
 }
 
@@ -270,6 +299,8 @@ class NativeGenerateResponse {
     this.finishReason,
     this.errorCode,
     this.errorMessage,
+    this.customJson,
+    this.rawJson,
   });
 
   /// Response parts returned by the native model bridge.
@@ -284,8 +315,21 @@ class NativeGenerateResponse {
   /// Optional native error message.
   String? errorMessage;
 
+  /// JSON-encoded response custom metadata.
+  String? customJson;
+
+  /// JSON-encoded raw native response/debug metadata.
+  String? rawJson;
+
   List<Object?> _toList() {
-    return <Object?>[parts, finishReason, errorCode, errorMessage];
+    return <Object?>[
+      parts,
+      finishReason,
+      errorCode,
+      errorMessage,
+      customJson,
+      rawJson,
+    ];
   }
 
   Object encode() {
@@ -299,6 +343,8 @@ class NativeGenerateResponse {
       finishReason: result[1] as String?,
       errorCode: result[2] as String?,
       errorMessage: result[3] as String?,
+      customJson: result[4] as String?,
+      rawJson: result[5] as String?,
     );
   }
 
@@ -314,7 +360,9 @@ class NativeGenerateResponse {
     return _deepEquals(parts, other.parts) &&
         _deepEquals(finishReason, other.finishReason) &&
         _deepEquals(errorCode, other.errorCode) &&
-        _deepEquals(errorMessage, other.errorMessage);
+        _deepEquals(errorMessage, other.errorMessage) &&
+        _deepEquals(customJson, other.customJson) &&
+        _deepEquals(rawJson, other.rawJson);
   }
 
   @override
@@ -323,7 +371,7 @@ class NativeGenerateResponse {
 
   @override
   String toString() {
-    return 'NativeGenerateResponse(parts: $parts, finishReason: $finishReason, errorCode: $errorCode, errorMessage: $errorMessage)';
+    return 'NativeGenerateResponse(parts: $parts, finishReason: $finishReason, errorCode: $errorCode, errorMessage: $errorMessage, customJson: $customJson, rawJson: $rawJson)';
   }
 }
 
@@ -336,6 +384,7 @@ class NativeGenerateStreamEvent {
     this.response,
     this.errorCode,
     this.errorMessage,
+    this.customJson,
   });
 
   /// Native stream request id used to filter shared event-channel events.
@@ -356,8 +405,19 @@ class NativeGenerateStreamEvent {
   /// Optional native stream error message.
   String? errorMessage;
 
+  /// JSON-encoded stream chunk custom metadata.
+  String? customJson;
+
   List<Object?> _toList() {
-    return <Object?>[requestId, parts, done, response, errorCode, errorMessage];
+    return <Object?>[
+      requestId,
+      parts,
+      done,
+      response,
+      errorCode,
+      errorMessage,
+      customJson,
+    ];
   }
 
   Object encode() {
@@ -373,6 +433,7 @@ class NativeGenerateStreamEvent {
       response: result[3] as NativeGenerateResponse?,
       errorCode: result[4] as String?,
       errorMessage: result[5] as String?,
+      customJson: result[6] as String?,
     );
   }
 
@@ -391,7 +452,8 @@ class NativeGenerateStreamEvent {
         _deepEquals(done, other.done) &&
         _deepEquals(response, other.response) &&
         _deepEquals(errorCode, other.errorCode) &&
-        _deepEquals(errorMessage, other.errorMessage);
+        _deepEquals(errorMessage, other.errorMessage) &&
+        _deepEquals(customJson, other.customJson);
   }
 
   @override
@@ -400,7 +462,7 @@ class NativeGenerateStreamEvent {
 
   @override
   String toString() {
-    return 'NativeGenerateStreamEvent(requestId: $requestId, parts: $parts, done: $done, response: $response, errorCode: $errorCode, errorMessage: $errorMessage)';
+    return 'NativeGenerateStreamEvent(requestId: $requestId, parts: $parts, done: $done, response: $response, errorCode: $errorCode, errorMessage: $errorMessage, customJson: $customJson)';
   }
 }
 

@@ -6,6 +6,9 @@ import 'foundation_models_exception.dart';
 import 'foundation_models_mapper.dart';
 import 'pigeon/foundation_models_api.g.dart';
 
+part 'model_runner.dart';
+part 'tool_loop_policy.dart';
+
 /// Ready-to-register Genkit plugin for Apple Foundation Models.
 ///
 /// Use this in `Genkit(plugins: [foundationModels])` for the normal package
@@ -62,79 +65,13 @@ final class FoundationModelsPlugin extends GenkitPlugin {
             'ModelRequest is required.',
           );
         }
-        final nativeRequest = toNativeGenerateRequest(request);
-        final allowedToolNames = request.tools?.map((tool) => tool.name);
-        final completedToolNames = _completedToolNames(request);
-        if (context.streamingRequested) {
-          NativeGenerateResponse? finalResponse;
-          final streamNormalizer = FoundationModelsStreamNormalizer();
-          final streamedContent = <Part>[];
-          await for (final event in _api.streamGenerate(nativeRequest)) {
-            if (event.errorCode != null) {
-              for (final _ in streamNormalizer.add(
-                event,
-                allowedToolNames: allowedToolNames,
-                completedToolNames: completedToolNames,
-              )) {}
-            }
-            if (event.done ?? false) {
-              finalResponse = event.response;
-              continue;
-            }
-            for (final chunk in streamNormalizer.add(
-              event,
-              allowedToolNames: allowedToolNames,
-              completedToolNames: completedToolNames,
-            )) {
-              streamedContent.addAll(chunk.content);
-              context.sendChunk(chunk);
-            }
-          }
-
-          final bufferedChunk = streamNormalizer.flush(
-            allowedToolNames: allowedToolNames,
-            completedToolNames: completedToolNames,
-          );
-          if (bufferedChunk != null) {
-            streamedContent.addAll(bufferedChunk.content);
-            context.sendChunk(bufferedChunk);
-          }
-
-          if (finalResponse == null) {
-            if (streamedContent.isNotEmpty) {
-              return ModelResponse(
-                finishReason: FinishReason.stop,
-                message: Message(role: Role.model, content: streamedContent),
-              );
-            }
-            throw const FoundationModelsException(
-              FoundationModelsErrorCode.generationFailed,
-              'Native stream ended without a final response.',
-            );
-          }
-          return toModelResponse(
-            finalResponse,
-            allowedToolNames: allowedToolNames,
-            completedToolNames: completedToolNames,
-          );
-        }
-
-        final nativeResponse = await _api.generate(nativeRequest);
-        return toModelResponse(
-          nativeResponse,
-          allowedToolNames: allowedToolNames,
-          completedToolNames: completedToolNames,
-        );
+        return _FoundationModelsModelRunner(
+          api: _api,
+          request: request,
+          context: context,
+        ).run();
       },
     );
-  }
-
-  Set<String> _completedToolNames(ModelRequest request) {
-    return request.messages
-        .expand((message) => message.content)
-        .map((part) => part.toolResponse?.name)
-        .nonNulls
-        .toSet();
   }
 
   static final ActionMetadata _metadata = modelMetadata(

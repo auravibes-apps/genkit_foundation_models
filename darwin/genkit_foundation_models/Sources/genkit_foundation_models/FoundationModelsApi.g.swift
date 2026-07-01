@@ -194,7 +194,7 @@ struct NativeGenerateRequest: Hashable, CustomStringConvertible {
   var systemInstruction: String? = nil
   /// JSON-encoded generation config such as temperature or token limit.
   var configJson: String? = nil
-  /// JSON-encoded tool declarations for formatted tool-call prompting.
+  /// JSON-encoded tool declarations for native tool capture.
   var toolsJson: String? = nil
 
 
@@ -294,6 +294,12 @@ struct NativePart: Hashable, CustomStringConvertible {
   var toolRequestJson: String? = nil
   /// JSON-encoded Genkit tool response.
   var toolResponseJson: String? = nil
+  /// Native reasoning/debug text. Never assistant-visible response text.
+  var reasoningText: String? = nil
+  /// JSON-encoded metadata for this part.
+  var metadataJson: String? = nil
+  /// JSON-encoded custom data for this part.
+  var customJson: String? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -301,11 +307,17 @@ struct NativePart: Hashable, CustomStringConvertible {
     let text: String? = nilOrValue(pigeonVar_list[0])
     let toolRequestJson: String? = nilOrValue(pigeonVar_list[1])
     let toolResponseJson: String? = nilOrValue(pigeonVar_list[2])
+    let reasoningText: String? = nilOrValue(pigeonVar_list[3])
+    let metadataJson: String? = nilOrValue(pigeonVar_list[4])
+    let customJson: String? = nilOrValue(pigeonVar_list[5])
 
     return NativePart(
       text: text,
       toolRequestJson: toolRequestJson,
-      toolResponseJson: toolResponseJson
+      toolResponseJson: toolResponseJson,
+      reasoningText: reasoningText,
+      metadataJson: metadataJson,
+      customJson: customJson
     )
   }
   func toList() -> [Any?] {
@@ -313,13 +325,16 @@ struct NativePart: Hashable, CustomStringConvertible {
       text,
       toolRequestJson,
       toolResponseJson,
+      reasoningText,
+      metadataJson,
+      customJson,
     ]
   }
   static func == (lhs: NativePart, rhs: NativePart) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return FoundationModelsApiPigeonInternal.deepEquals(lhs.text, rhs.text) && FoundationModelsApiPigeonInternal.deepEquals(lhs.toolRequestJson, rhs.toolRequestJson) && FoundationModelsApiPigeonInternal.deepEquals(lhs.toolResponseJson, rhs.toolResponseJson)
+    return FoundationModelsApiPigeonInternal.deepEquals(lhs.text, rhs.text) && FoundationModelsApiPigeonInternal.deepEquals(lhs.toolRequestJson, rhs.toolRequestJson) && FoundationModelsApiPigeonInternal.deepEquals(lhs.toolResponseJson, rhs.toolResponseJson) && FoundationModelsApiPigeonInternal.deepEquals(lhs.reasoningText, rhs.reasoningText) && FoundationModelsApiPigeonInternal.deepEquals(lhs.metadataJson, rhs.metadataJson) && FoundationModelsApiPigeonInternal.deepEquals(lhs.customJson, rhs.customJson)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -327,10 +342,13 @@ struct NativePart: Hashable, CustomStringConvertible {
     FoundationModelsApiPigeonInternal.deepHash(value: text, hasher: &hasher)
     FoundationModelsApiPigeonInternal.deepHash(value: toolRequestJson, hasher: &hasher)
     FoundationModelsApiPigeonInternal.deepHash(value: toolResponseJson, hasher: &hasher)
+    FoundationModelsApiPigeonInternal.deepHash(value: reasoningText, hasher: &hasher)
+    FoundationModelsApiPigeonInternal.deepHash(value: metadataJson, hasher: &hasher)
+    FoundationModelsApiPigeonInternal.deepHash(value: customJson, hasher: &hasher)
   }
 
   public var description: String {
-    return "NativePart(text: \(String(describing: text)), toolRequestJson: \(String(describing: toolRequestJson)), toolResponseJson: \(String(describing: toolResponseJson)))"
+    return "NativePart(text: \(String(describing: text)), toolRequestJson: \(String(describing: toolRequestJson)), toolResponseJson: \(String(describing: toolResponseJson)), reasoningText: \(String(describing: reasoningText)), metadataJson: \(String(describing: metadataJson)), customJson: \(String(describing: customJson)))"
   }
 }
 
@@ -346,6 +364,10 @@ struct NativeGenerateResponse: Hashable, CustomStringConvertible {
   var errorCode: String? = nil
   /// Optional native error message.
   var errorMessage: String? = nil
+  /// JSON-encoded response custom metadata.
+  var customJson: String? = nil
+  /// JSON-encoded raw native response/debug metadata.
+  var rawJson: String? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -354,12 +376,16 @@ struct NativeGenerateResponse: Hashable, CustomStringConvertible {
     let finishReason: String? = nilOrValue(pigeonVar_list[1])
     let errorCode: String? = nilOrValue(pigeonVar_list[2])
     let errorMessage: String? = nilOrValue(pigeonVar_list[3])
+    let customJson: String? = nilOrValue(pigeonVar_list[4])
+    let rawJson: String? = nilOrValue(pigeonVar_list[5])
 
     return NativeGenerateResponse(
       parts: parts,
       finishReason: finishReason,
       errorCode: errorCode,
-      errorMessage: errorMessage
+      errorMessage: errorMessage,
+      customJson: customJson,
+      rawJson: rawJson
     )
   }
   func toList() -> [Any?] {
@@ -368,13 +394,15 @@ struct NativeGenerateResponse: Hashable, CustomStringConvertible {
       finishReason,
       errorCode,
       errorMessage,
+      customJson,
+      rawJson,
     ]
   }
   static func == (lhs: NativeGenerateResponse, rhs: NativeGenerateResponse) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return FoundationModelsApiPigeonInternal.deepEquals(lhs.parts, rhs.parts) && FoundationModelsApiPigeonInternal.deepEquals(lhs.finishReason, rhs.finishReason) && FoundationModelsApiPigeonInternal.deepEquals(lhs.errorCode, rhs.errorCode) && FoundationModelsApiPigeonInternal.deepEquals(lhs.errorMessage, rhs.errorMessage)
+    return FoundationModelsApiPigeonInternal.deepEquals(lhs.parts, rhs.parts) && FoundationModelsApiPigeonInternal.deepEquals(lhs.finishReason, rhs.finishReason) && FoundationModelsApiPigeonInternal.deepEquals(lhs.errorCode, rhs.errorCode) && FoundationModelsApiPigeonInternal.deepEquals(lhs.errorMessage, rhs.errorMessage) && FoundationModelsApiPigeonInternal.deepEquals(lhs.customJson, rhs.customJson) && FoundationModelsApiPigeonInternal.deepEquals(lhs.rawJson, rhs.rawJson)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -383,10 +411,12 @@ struct NativeGenerateResponse: Hashable, CustomStringConvertible {
     FoundationModelsApiPigeonInternal.deepHash(value: finishReason, hasher: &hasher)
     FoundationModelsApiPigeonInternal.deepHash(value: errorCode, hasher: &hasher)
     FoundationModelsApiPigeonInternal.deepHash(value: errorMessage, hasher: &hasher)
+    FoundationModelsApiPigeonInternal.deepHash(value: customJson, hasher: &hasher)
+    FoundationModelsApiPigeonInternal.deepHash(value: rawJson, hasher: &hasher)
   }
 
   public var description: String {
-    return "NativeGenerateResponse(parts: \(String(describing: parts)), finishReason: \(String(describing: finishReason)), errorCode: \(String(describing: errorCode)), errorMessage: \(String(describing: errorMessage)))"
+    return "NativeGenerateResponse(parts: \(String(describing: parts)), finishReason: \(String(describing: finishReason)), errorCode: \(String(describing: errorCode)), errorMessage: \(String(describing: errorMessage)), customJson: \(String(describing: customJson)), rawJson: \(String(describing: rawJson)))"
   }
 }
 
@@ -406,6 +436,8 @@ struct NativeGenerateStreamEvent: Hashable, CustomStringConvertible {
   var errorCode: String? = nil
   /// Optional native stream error message.
   var errorMessage: String? = nil
+  /// JSON-encoded stream chunk custom metadata.
+  var customJson: String? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -416,6 +448,7 @@ struct NativeGenerateStreamEvent: Hashable, CustomStringConvertible {
     let response: NativeGenerateResponse? = nilOrValue(pigeonVar_list[3])
     let errorCode: String? = nilOrValue(pigeonVar_list[4])
     let errorMessage: String? = nilOrValue(pigeonVar_list[5])
+    let customJson: String? = nilOrValue(pigeonVar_list[6])
 
     return NativeGenerateStreamEvent(
       requestId: requestId,
@@ -423,7 +456,8 @@ struct NativeGenerateStreamEvent: Hashable, CustomStringConvertible {
       done: done,
       response: response,
       errorCode: errorCode,
-      errorMessage: errorMessage
+      errorMessage: errorMessage,
+      customJson: customJson
     )
   }
   func toList() -> [Any?] {
@@ -434,13 +468,14 @@ struct NativeGenerateStreamEvent: Hashable, CustomStringConvertible {
       response,
       errorCode,
       errorMessage,
+      customJson,
     ]
   }
   static func == (lhs: NativeGenerateStreamEvent, rhs: NativeGenerateStreamEvent) -> Bool {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return FoundationModelsApiPigeonInternal.deepEquals(lhs.requestId, rhs.requestId) && FoundationModelsApiPigeonInternal.deepEquals(lhs.parts, rhs.parts) && FoundationModelsApiPigeonInternal.deepEquals(lhs.done, rhs.done) && FoundationModelsApiPigeonInternal.deepEquals(lhs.response, rhs.response) && FoundationModelsApiPigeonInternal.deepEquals(lhs.errorCode, rhs.errorCode) && FoundationModelsApiPigeonInternal.deepEquals(lhs.errorMessage, rhs.errorMessage)
+    return FoundationModelsApiPigeonInternal.deepEquals(lhs.requestId, rhs.requestId) && FoundationModelsApiPigeonInternal.deepEquals(lhs.parts, rhs.parts) && FoundationModelsApiPigeonInternal.deepEquals(lhs.done, rhs.done) && FoundationModelsApiPigeonInternal.deepEquals(lhs.response, rhs.response) && FoundationModelsApiPigeonInternal.deepEquals(lhs.errorCode, rhs.errorCode) && FoundationModelsApiPigeonInternal.deepEquals(lhs.errorMessage, rhs.errorMessage) && FoundationModelsApiPigeonInternal.deepEquals(lhs.customJson, rhs.customJson)
   }
 
   func hash(into hasher: inout Hasher) {
@@ -451,10 +486,11 @@ struct NativeGenerateStreamEvent: Hashable, CustomStringConvertible {
     FoundationModelsApiPigeonInternal.deepHash(value: response, hasher: &hasher)
     FoundationModelsApiPigeonInternal.deepHash(value: errorCode, hasher: &hasher)
     FoundationModelsApiPigeonInternal.deepHash(value: errorMessage, hasher: &hasher)
+    FoundationModelsApiPigeonInternal.deepHash(value: customJson, hasher: &hasher)
   }
 
   public var description: String {
-    return "NativeGenerateStreamEvent(requestId: \(String(describing: requestId)), parts: \(String(describing: parts)), done: \(String(describing: done)), response: \(String(describing: response)), errorCode: \(String(describing: errorCode)), errorMessage: \(String(describing: errorMessage)))"
+    return "NativeGenerateStreamEvent(requestId: \(String(describing: requestId)), parts: \(String(describing: parts)), done: \(String(describing: done)), response: \(String(describing: response)), errorCode: \(String(describing: errorCode)), errorMessage: \(String(describing: errorMessage)), customJson: \(String(describing: customJson)))"
   }
 }
 

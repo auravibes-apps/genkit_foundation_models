@@ -1,3 +1,10 @@
+## 0.0.5-wip
+
+* Added native Foundation Models tool capture so Genkit tools map through structured Apple tool calls instead of prompt-only tool-call text.
+* Added transcript mapping for prior model tool calls and tool responses.
+* Added `foundationModelsToolLoopMode: singlePhase` to force a final-answer pass without tools after tool responses.
+* Added private bridge support for native reasoning/debug metadata, response `custom`/`raw` data, and chunk `custom` data.
+
 ## 0.0.4
 
 * Fixed cumulative streamed Foundation Models snapshots so inline tool calls are converted to Genkit tool requests instead of visible text.
@@ -5,7 +12,7 @@
 
 ## 0.0.3
 
-* Fixed streamed tool-call parsing so split `<tool_call>` tags are converted to Genkit tool requests instead of visible text.
+* Fixed streamed tool-call parsing so split native tool-call output is converted to Genkit tool requests instead of visible text.
 * Added support for `genkit: ^0.14.1`.
 
 ## 0.0.2

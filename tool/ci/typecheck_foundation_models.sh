@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source tool/ci/foundation_models_sources.sh
+
 platform="${1:-}"
 
 case "$platform" in
@@ -30,5 +32,4 @@ xcrun swiftc -typecheck \
   -sdk "$sdk_path" \
   -target "$target" \
   -parse-as-library \
-  tool/ci/foundation_models_typecheck_stubs.swift \
-  darwin/genkit_foundation_models/Sources/genkit_foundation_models/FoundationModelsHostApiImpl.swift
+  "${foundation_models_sources[@]}"
