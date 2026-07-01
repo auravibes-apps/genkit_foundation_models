@@ -24,10 +24,16 @@ The app demonstrates:
 - debug turn logs, chunk logs, errors, and copy-log support
 - native reasoning/debug metadata when exposed by the bridge
 - tool visibility controls: pass all tools or manually select tools
-- `singlePhase` mode, which forces a final-answer pass without tools after a
-  tool response
+- safe default tool loop: after a tool response, the next model pass answers
+  without tools
+- `Chained tools` mode, which keeps tools available after tool responses for
+  stress testing multi-step agents
+- `Allow todo writes`, which must be enabled before the model can mutate todos
 
 "Thinking" bubbles are UI status only. They are not model reasoning output.
+
+Todo write tools are disabled by default because prompt instructions are not a
+safety boundary. Enable `Allow todo writes` only when testing mutations.
 
 Native Swift plugin changes require a full app rebuild/relaunch. Hot reload does
 not reload the Foundation Models plugin code.

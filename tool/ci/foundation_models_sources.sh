@@ -6,6 +6,7 @@ foundation_models_sources=(
   darwin/genkit_foundation_models/Sources/genkit_foundation_models/NativeErrorMapper.swift
   darwin/genkit_foundation_models/Sources/genkit_foundation_models/NativeGenerationOptionsMapper.swift
   darwin/genkit_foundation_models/Sources/genkit_foundation_models/NativeJSONSchemaConverter.swift
+  darwin/genkit_foundation_models/Sources/genkit_foundation_models/NativeUsageMapper.swift
   darwin/genkit_foundation_models/Sources/genkit_foundation_models/NativeToolRuntime.swift
   darwin/genkit_foundation_models/Sources/genkit_foundation_models/NativeTranscriptMapper.swift
   darwin/genkit_foundation_models/Sources/genkit_foundation_models/NativeGenerationRunner.swift

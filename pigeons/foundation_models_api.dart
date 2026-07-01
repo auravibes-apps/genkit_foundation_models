@@ -80,6 +80,7 @@ class NativeGenerateResponse {
     this.finishReason,
     this.errorCode,
     this.errorMessage,
+    this.usageJson,
     this.customJson,
     this.rawJson,
   });
@@ -95,6 +96,9 @@ class NativeGenerateResponse {
 
   /// Optional native error message.
   String? errorMessage;
+
+  /// JSON-encoded Genkit generation usage.
+  String? usageJson;
 
   /// JSON-encoded response custom metadata.
   String? customJson;

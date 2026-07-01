@@ -5,6 +5,7 @@ struct NativeToolCaptureTest {
   static func main() async throws {
     try testToolDeclarationDecoding()
     try testInvalidToolDeclarationJson()
+    try testUsageJsonMapping()
     try await testToolCallRecorderParts()
   }
 
@@ -36,6 +37,60 @@ struct NativeToolCaptureTest {
     } catch {
       precondition(true)
     }
+  }
+
+  private static func testUsageJsonMapping() throws {
+    guard let json = FoundationModelsHostApiImpl.usageJson(from: [
+      "inputTokens": 3,
+      "outputTokens": 5,
+      "totalTokens": 8,
+      "thoughtsTokens": 2,
+      "cachedContentTokens": 1,
+      "ignored": 99,
+      "custom": ["provider": "foundation_models"],
+    ]),
+      let data = json.data(using: .utf8),
+      let decoded = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    else {
+      preconditionFailure("Expected usage JSON")
+    }
+
+    precondition(decoded["inputTokens"] as? Int == 3)
+    precondition(decoded["outputTokens"] as? Int == 5)
+    precondition(decoded["totalTokens"] as? Int == 8)
+    precondition(decoded["thoughtsTokens"] as? Int == 2)
+    precondition(decoded["cachedContentTokens"] as? Int == 1)
+    precondition(decoded["ignored"] == nil)
+    let custom = decoded["custom"] as? [String: String]
+    precondition(custom?["provider"] == "foundation_models")
+
+    let reflectedJson = FoundationModelsHostApiImpl.usageJson(
+      fromUsageValue: FakeUsage(
+        input: FakeUsageBucket(
+          totalTokenCount: 7,
+          cachedTokenCount: 2,
+          reasoningTokenCount: nil
+        ),
+        output: FakeUsageBucket(
+          totalTokenCount: 11,
+          cachedTokenCount: nil,
+          reasoningTokenCount: 3
+        )
+      )
+    )
+    guard let reflectedJson,
+          let reflectedData = reflectedJson.data(using: .utf8),
+          let reflected = try JSONSerialization.jsonObject(with: reflectedData)
+            as? [String: Any]
+    else {
+      preconditionFailure("Expected reflected usage JSON")
+    }
+
+    precondition(reflected["inputTokens"] as? Int == 7)
+    precondition(reflected["outputTokens"] as? Int == 11)
+    precondition(reflected["totalTokens"] as? Int == 18)
+    precondition(reflected["thoughtsTokens"] as? Int == 3)
+    precondition(reflected["cachedContentTokens"] as? Int == 2)
   }
 
   private static func testToolCallRecorderParts() async throws {
@@ -103,4 +158,15 @@ struct NativeToolCaptureTest {
     let decodedInput = decoded["input"] as? [String] ?? []
     precondition(decodedInput == input)
   }
+}
+
+private struct FakeUsage {
+  let input: FakeUsageBucket
+  let output: FakeUsageBucket
+}
+
+private struct FakeUsageBucket {
+  let totalTokenCount: Int
+  let cachedTokenCount: Int?
+  let reasoningTokenCount: Int?
 }

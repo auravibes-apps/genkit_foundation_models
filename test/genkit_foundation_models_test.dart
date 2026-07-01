@@ -141,6 +141,74 @@ void main() {
       expect(textPart?.custom, {'debug': true});
     });
 
+    test('maps native usage to Genkit generation usage', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [NativePart(text: 'native answer')],
+          finishReason: 'stop',
+          usageJson:
+              '{"inputTokens":3,"outputTokens":5,"totalTokens":8,"thoughtsTokens":2,"cachedContentTokens":1,"custom":{"provider":"foundation_models"}}',
+        ),
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      final response = await model(ModelRequest(messages: _textMessages));
+
+      expect(response.usage?.inputTokens, 3);
+      expect(response.usage?.outputTokens, 5);
+      expect(response.usage?.totalTokens, 8);
+      expect(response.usage?.thoughtsTokens, 2);
+      expect(response.usage?.cachedContentTokens, 1);
+      expect(response.usage?.custom, {'provider': 'foundation_models'});
+    });
+
+    test('throws decode error for invalid native usage json', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [NativePart(text: 'native answer')],
+          finishReason: 'stop',
+          usageJson: 'nope',
+        ),
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      await expectLater(
+        () => model(ModelRequest(messages: _textMessages)),
+        throwsA(
+          isA<FoundationModelsException>().having(
+            (error) => error.code,
+            'code',
+            FoundationModelsErrorCode.decodeFailed,
+          ),
+        ),
+      );
+    });
+
+    test('throws decode error for non-object native usage json', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [NativePart(text: 'native answer')],
+          finishReason: 'stop',
+          usageJson: '[1,2,3]',
+        ),
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      await expectLater(
+        () => model(ModelRequest(messages: _textMessages)),
+        throwsA(
+          isA<FoundationModelsException>().having(
+            (error) => error.code,
+            'code',
+            FoundationModelsErrorCode.decodeFailed,
+          ),
+        ),
+      );
+    });
+
     test('throws decode error for invalid native metadata json', () async {
       final api = _FakeFoundationModelsApi(
         response: NativeGenerateResponse(
@@ -210,6 +278,35 @@ void main() {
       expect(chunks.map((chunk) => chunk.content.single.text), ['hel', 'lo']);
       expect(chunks.every((chunk) => chunk.role?.value == 'model'), isTrue);
       expect(response.message?.content.single.text, 'hello');
+    });
+
+    test('maps native final stream usage to Genkit generation usage', () async {
+      final api = _FakeFoundationModelsApi(
+        streamEvents: [
+          NativeGenerateStreamEvent(parts: [NativePart(text: 'hel')]),
+          NativeGenerateStreamEvent(
+            done: true,
+            response: NativeGenerateResponse(
+              parts: [NativePart(text: 'hello')],
+              finishReason: 'stop',
+              usageJson: '{"inputTokens":2,"outputTokens":3,"totalTokens":5}',
+            ),
+          ),
+        ],
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+      final chunks = <ModelResponseChunk>[];
+
+      final response = await model(
+        ModelRequest(messages: _textMessages),
+        onChunk: chunks.add,
+      );
+
+      expect(chunks.single.content.single.text, 'hel');
+      expect(response.usage?.inputTokens, 2);
+      expect(response.usage?.outputTokens, 3);
+      expect(response.usage?.totalTokens, 5);
     });
 
     test('streams reasoning chunks and custom metadata', () async {
@@ -559,6 +656,7 @@ void main() {
               ],
             ),
           ],
+          config: {'foundationModelsToolLoopMode': 'chained'},
           tools: [
             ToolDefinition(
               name: 'current_time',
@@ -608,6 +706,7 @@ void main() {
                 ],
               ),
             ],
+            config: {'foundationModelsToolLoopMode': 'chained'},
             tools: [
               ToolDefinition(
                 name: 'current_time',
@@ -670,6 +769,7 @@ void main() {
               ],
             ),
           ],
+          config: {'foundationModelsToolLoopMode': 'chained'},
           tools: [
             ToolDefinition(
               name: 'current_time',
@@ -753,7 +853,7 @@ void main() {
       );
     });
 
-    test('omits tools after tool responses in single-phase mode', () async {
+    test('omits tools after tool responses by default', () async {
       final api = _FakeFoundationModelsApi(
         response: NativeGenerateResponse(
           parts: [NativePart(text: 'It is now.')],
@@ -780,7 +880,6 @@ void main() {
               ],
             ),
           ],
-          config: {'foundationModelsToolLoopMode': 'singlePhase'},
           tools: [
             ToolDefinition(
               name: 'current_time',
@@ -792,6 +891,52 @@ void main() {
 
       expect(api.lastRequest?.toolsJson, isNull);
       expect(response.text, 'It is now.');
+    });
+
+    test('keeps tools after tool responses in chained mode', () async {
+      final api = _FakeFoundationModelsApi(
+        response: NativeGenerateResponse(
+          parts: [
+            NativePart(
+              toolRequestJson:
+                  '{"ref":"call-2","name":"current_time","input":{}}',
+            ),
+          ],
+          finishReason: 'tool_calls',
+        ),
+      );
+      final plugin = FoundationModelsPlugin.testing(api: api);
+      final model = plugin.model(FoundationModelsPlugin.defaultModelName);
+
+      final response = await model(
+        ModelRequest(
+          messages: [
+            ..._textMessages,
+            Message(
+              role: Role.tool,
+              content: [
+                ToolResponsePart(
+                  toolResponse: ToolResponse(
+                    ref: 'call-1',
+                    name: 'current_time',
+                    output: {'currentTime': 'now'},
+                  ),
+                ),
+              ],
+            ),
+          ],
+          config: {'foundationModelsToolLoopMode': 'chained'},
+          tools: [
+            ToolDefinition(
+              name: 'current_time',
+              description: 'Returns current time',
+            ),
+          ],
+        ),
+      );
+
+      expect(api.lastRequest?.toolsJson, isNotNull);
+      expect(response.message?.content.single.toolRequest?.ref, 'call-2');
     });
 
     test('keeps tools available on a new user turn by default', () async {
@@ -892,6 +1037,7 @@ void main() {
                 ],
               ),
             ],
+            config: {'foundationModelsToolLoopMode': 'chained'},
             tools: [
               ToolDefinition(name: 'todo_read', description: 'Reads todos'),
             ],

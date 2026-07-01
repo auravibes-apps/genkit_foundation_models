@@ -299,6 +299,7 @@ class NativeGenerateResponse {
     this.finishReason,
     this.errorCode,
     this.errorMessage,
+    this.usageJson,
     this.customJson,
     this.rawJson,
   });
@@ -315,6 +316,9 @@ class NativeGenerateResponse {
   /// Optional native error message.
   String? errorMessage;
 
+  /// JSON-encoded Genkit generation usage.
+  String? usageJson;
+
   /// JSON-encoded response custom metadata.
   String? customJson;
 
@@ -327,6 +331,7 @@ class NativeGenerateResponse {
       finishReason,
       errorCode,
       errorMessage,
+      usageJson,
       customJson,
       rawJson,
     ];
@@ -343,8 +348,9 @@ class NativeGenerateResponse {
       finishReason: result[1] as String?,
       errorCode: result[2] as String?,
       errorMessage: result[3] as String?,
-      customJson: result[4] as String?,
-      rawJson: result[5] as String?,
+      usageJson: result[4] as String?,
+      customJson: result[5] as String?,
+      rawJson: result[6] as String?,
     );
   }
 
@@ -361,6 +367,7 @@ class NativeGenerateResponse {
         _deepEquals(finishReason, other.finishReason) &&
         _deepEquals(errorCode, other.errorCode) &&
         _deepEquals(errorMessage, other.errorMessage) &&
+        _deepEquals(usageJson, other.usageJson) &&
         _deepEquals(customJson, other.customJson) &&
         _deepEquals(rawJson, other.rawJson);
   }
@@ -371,7 +378,7 @@ class NativeGenerateResponse {
 
   @override
   String toString() {
-    return 'NativeGenerateResponse(parts: $parts, finishReason: $finishReason, errorCode: $errorCode, errorMessage: $errorMessage, customJson: $customJson, rawJson: $rawJson)';
+    return 'NativeGenerateResponse(parts: $parts, finishReason: $finishReason, errorCode: $errorCode, errorMessage: $errorMessage, usageJson: $usageJson, customJson: $customJson, rawJson: $rawJson)';
   }
 }
 

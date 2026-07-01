@@ -55,7 +55,8 @@ final class _GeneratePageState extends State<GeneratePage> {
   var _isGenerating = false;
   var _showDebug = true;
   var _showErrors = true;
-  var _singlePhaseToolLoop = false;
+  var _chainedToolLoop = false;
+  var _allowTodoWrites = false;
   var _useAllTools = true;
   var _manualToolNames = <String>{};
 
@@ -180,7 +181,8 @@ final class _GeneratePageState extends State<GeneratePage> {
           'Exposed tools: ${activeTools.map((tool) => tool.name).join(', ')}',
         ),
       );
-      for (var turn = 1; turn <= 50; turn++) {
+      final maxTurns = _chainedToolLoop ? 50 : 8;
+      for (var turn = 1; turn <= maxTurns; turn++) {
         _addItem(
           _ChatItem.debug('Turn $turn: ${turnMessages.length} messages'),
         );
@@ -189,8 +191,7 @@ final class _GeneratePageState extends State<GeneratePage> {
           config: {
             'temperature': 0.2,
             'maxOutputTokens': 256,
-            if (_singlePhaseToolLoop)
-              'foundationModelsToolLoopMode': 'singlePhase',
+            if (_chainedToolLoop) 'foundationModelsToolLoopMode': 'chained',
           },
           tools: activeTools,
           returnToolRequests: true,
@@ -214,7 +215,7 @@ final class _GeneratePageState extends State<GeneratePage> {
         _logResponseDebug(turn, response);
         _addItem(
           _ChatItem.debug(
-            'Turn $turn result: ${response.toolRequests.length} tool requests, ${response.text.length} text chars',
+            'Turn $turn result: ${response.toolRequests.length} tool requests, ${response.text.length} text chars, usage: ${_usageStatus(response.usage)}',
           ),
         );
         final responseMessage = response.message;
@@ -267,7 +268,9 @@ final class _GeneratePageState extends State<GeneratePage> {
           Message(role: Role.tool, content: toolResponses),
         ];
       }
-      throw StateError('Debug loop reached 50 turns. See turn debug bubbles.');
+      throw StateError(
+        'Debug loop reached ${_chainedToolLoop ? 50 : 8} turns. See turn debug bubbles.',
+      );
     } catch (error, stackTrace) {
       if (!mounted) return;
       _logError(error, stackTrace);
@@ -341,10 +344,16 @@ final class _GeneratePageState extends State<GeneratePage> {
                                   setState(() => _showErrors = value),
                             ),
                             FilterChip(
-                              label: const Text('Single phase'),
-                              selected: _singlePhaseToolLoop,
+                              label: const Text('Chained tools'),
+                              selected: _chainedToolLoop,
                               onSelected: (value) =>
-                                  setState(() => _singlePhaseToolLoop = value),
+                                  setState(() => _chainedToolLoop = value),
+                            ),
+                            FilterChip(
+                              label: const Text('Allow todo writes'),
+                              selected: _allowTodoWrites,
+                              onSelected: (value) =>
+                                  setState(() => _allowTodoWrites = value),
                             ),
                           ],
                         ),
@@ -354,6 +363,7 @@ final class _GeneratePageState extends State<GeneratePage> {
                   _TodoPanel(todos: _todos),
                   _ToolScopePanel(
                     useAllTools: _useAllTools,
+                    allowTodoWrites: _allowTodoWrites,
                     toolNames: _tools.map((tool) => tool.name).toList(),
                     selectedToolNames: _activeToolNames,
                     manualToolNames: _manualToolNames,
@@ -509,17 +519,40 @@ final class _GeneratePageState extends State<GeneratePage> {
         '';
     final custom = response.custom;
     final raw = response.raw;
-    if (reasoning.isEmpty && custom == null && raw == null) return;
+    final usage = response.usage;
+    if (reasoning.isEmpty && custom == null && raw == null && usage == null) {
+      return;
+    }
     _addItem(
       _ChatItem.debug(
         [
           'Turn $turn native debug metadata',
           if (reasoning.isNotEmpty) 'reasoning: $reasoning',
+          if (usage != null) 'usage: ${_usageSummary(usage)}',
           if (custom != null) 'custom: ${jsonEncode(custom)}',
           if (raw != null) 'raw: ${jsonEncode(raw)}',
         ].join('\n'),
       ),
     );
+  }
+
+  String _usageSummary(GenerationUsage usage) {
+    return jsonEncode({
+      if (usage.inputTokens != null) 'inputTokens': usage.inputTokens,
+      if (usage.outputTokens != null) 'outputTokens': usage.outputTokens,
+      if (usage.totalTokens != null) 'totalTokens': usage.totalTokens,
+      if (usage.thoughtsTokens != null) 'thoughtsTokens': usage.thoughtsTokens,
+      if (usage.cachedContentTokens != null)
+        'cachedContentTokens': usage.cachedContentTokens,
+      if (usage.inputCharacters != null)
+        'inputCharacters': usage.inputCharacters,
+      if (usage.custom != null) 'custom': usage.custom,
+    });
+  }
+
+  String _usageStatus(GenerationUsage? usage) {
+    if (usage == null) return 'not provided by native SDK';
+    return _usageSummary(usage);
   }
 
   bool _isVisible(_ChatItem item) {
@@ -548,6 +581,16 @@ final class _GeneratePageState extends State<GeneratePage> {
   Future<Map<String, dynamic>> _runToolRequest(ToolRequest request) async {
     Map<String, dynamic> output;
     try {
+      if (!_allowTodoWrites && _todoWriteToolNames.contains(request.name)) {
+        output = {
+          'error':
+              'Todo write tools are disabled. Enable Allow todo writes to let the model mutate todos.',
+        };
+        _addItem(
+          _ChatItem.tool('${request.name}(${request.input ?? {}}) -> $output'),
+        );
+        return output;
+      }
       output = switch (request.name) {
         'current_time' => _currentTimeToolOutput(),
         'todo_read' => _todoRead(),
@@ -644,10 +687,19 @@ This is a debug app for a Genkit plugin.
 Use tools only when the user's request explicitly asks for them or cannot be answered without them.
 For read-only todo questions, call todo_read and then answer. Do not modify todos.
 Call todo write tools only when the user explicitly asks to add, remove, mark, rename, or update a todo.
+The app may return an error when todo write tools are disabled. If that happens, explain that writes are disabled instead of retrying.
 After a tool result is enough to answer the user's request, answer normally in prose.
 Use todo_read before changing a todo if you do not know its id.
 If a tool returns an error, do not retry the same failed call. Change the input, choose a different relevant tool, or answer from the transcript.
 ''';
+
+const _todoWriteToolNames = {
+  'todo_add',
+  'todo_remove',
+  'todo_mark_done',
+  'todo_mark_not_done',
+  'todo_update_name',
+};
 
 final _todoNameSchema = SchemanticType.from<Map<String, dynamic>>(
   jsonSchema: {
@@ -752,6 +804,7 @@ final class _TodoItem {
 final class _ToolScopePanel extends StatelessWidget {
   const _ToolScopePanel({
     required this.useAllTools,
+    required this.allowTodoWrites,
     required this.toolNames,
     required this.selectedToolNames,
     required this.manualToolNames,
@@ -760,6 +813,7 @@ final class _ToolScopePanel extends StatelessWidget {
   });
 
   final bool useAllTools;
+  final bool allowTodoWrites;
   final List<String> toolNames;
   final Set<String> selectedToolNames;
   final Set<String> manualToolNames;
@@ -797,6 +851,15 @@ final class _ToolScopePanel extends StatelessWidget {
                 ? 'All tools are passed to Genkit. The model decides what to call.'
                 : 'Manual selection: these exact tools are passed to Genkit.',
           ),
+          if (!allowTodoWrites) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Todo write tools return an error until Allow todo writes is enabled.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,

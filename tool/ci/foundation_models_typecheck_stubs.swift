@@ -73,6 +73,7 @@ struct NativeGenerateResponse {
   let finishReason: String?
   let errorCode: String?
   let errorMessage: String?
+  let usageJson: String?
   let customJson: String?
   let rawJson: String?
 
@@ -81,6 +82,7 @@ struct NativeGenerateResponse {
     finishReason: String? = nil,
     errorCode: String? = nil,
     errorMessage: String? = nil,
+    usageJson: String? = nil,
     customJson: String? = nil,
     rawJson: String? = nil
   ) {
@@ -88,6 +90,7 @@ struct NativeGenerateResponse {
     self.finishReason = finishReason
     self.errorCode = errorCode
     self.errorMessage = errorMessage
+    self.usageJson = usageJson
     self.customJson = customJson
     self.rawJson = rawJson
   }

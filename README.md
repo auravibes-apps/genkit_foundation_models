@@ -247,11 +247,15 @@ Safety behavior:
 
 Tool-loop behavior:
 
-- by default, tools stay available while Genkit runs its normal tool loop
-- set `config: {'foundationModelsToolLoopMode': 'singlePhase'}` to omit tools
-  immediately after a tool response and force a final-answer pass
+- by default, tools are omitted immediately after a tool response so the model
+  produces final prose from the tool output
+- set `config: {'foundationModelsToolLoopMode': 'chained'}` to keep tools
+  available after tool responses for multi-step agent exploration
 - after a native generation failure on a tool-response turn, the provider retries
   once without tools so the model can answer from the tool output
+
+For agent use, set an explicit `maxTurns` and expose the smallest useful tool
+set. Side-effect tools should still enforce app-level approval or confirmation.
 
 ## Multi-turn Conversations
 

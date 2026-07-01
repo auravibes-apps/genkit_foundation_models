@@ -10,10 +10,13 @@ Set<String> _completedToolRefs(ModelRequest request) {
 
 bool _includeTools(ModelRequest request) {
   if (request.tools == null || request.tools!.isEmpty) return false;
+  if (request.config?['foundationModelsToolLoopMode'] == 'chained') {
+    return true;
+  }
   if (request.config?['foundationModelsToolLoopMode'] == 'singlePhase') {
     return !_latestMessageIsToolResponse(request);
   }
-  return true;
+  return !_latestMessageIsToolResponse(request);
 }
 
 bool _latestMessageIsToolResponse(ModelRequest request) {

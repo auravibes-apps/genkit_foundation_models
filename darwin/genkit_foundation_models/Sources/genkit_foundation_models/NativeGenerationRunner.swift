@@ -87,7 +87,8 @@ final class NativeGenerationRunner {
               parts: await runtime.capturedParts(),
               finishReason: "tool_calls",
               errorCode: nil,
-              errorMessage: nil
+              errorMessage: nil,
+              usageJson: nil
             )))
             return
           }
@@ -95,7 +96,8 @@ final class NativeGenerationRunner {
             parts: FoundationModelsHostApiImpl.responseParts(from: response.content),
             finishReason: "stop",
             errorCode: nil,
-            errorMessage: nil
+            errorMessage: nil,
+            usageJson: FoundationModelsHostApiImpl.usageJson(from: response)
           )))
         } catch {
           let capturedParts = await toolRuntime?.capturedParts() ?? []
@@ -104,7 +106,8 @@ final class NativeGenerationRunner {
               parts: capturedParts,
               finishReason: "tool_calls",
               errorCode: nil,
-              errorMessage: nil
+              errorMessage: nil,
+              usageJson: nil
             )))
             return
           }
@@ -164,7 +167,8 @@ final class NativeGenerationRunner {
                   parts: FoundationModelsHostApiImpl.responseParts(from: response.content),
                   finishReason: "stop",
                   errorCode: nil,
-                  errorMessage: nil
+                  errorMessage: nil,
+                  usageJson: FoundationModelsHostApiImpl.usageJson(from: response)
                 ),
                 errorCode: nil,
                 errorMessage: nil
@@ -179,7 +183,8 @@ final class NativeGenerationRunner {
                   parts: await runtime.capturedParts(),
                   finishReason: "tool_calls",
                   errorCode: nil,
-                  errorMessage: nil
+                  errorMessage: nil,
+                  usageJson: nil
                 ),
                 errorCode: nil,
                 errorMessage: nil
@@ -223,7 +228,8 @@ final class NativeGenerationRunner {
                 parts: await runtime.capturedParts(),
                 finishReason: "tool_calls",
                 errorCode: nil,
-                errorMessage: nil
+                errorMessage: nil,
+                usageJson: nil
               ),
               errorCode: nil,
               errorMessage: nil
@@ -238,7 +244,8 @@ final class NativeGenerationRunner {
               parts: FoundationModelsHostApiImpl.responseParts(from: response.content),
               finishReason: "stop",
               errorCode: nil,
-              errorMessage: nil
+              errorMessage: nil,
+              usageJson: FoundationModelsHostApiImpl.usageJson(from: response)
             ),
             errorCode: nil,
             errorMessage: nil
@@ -254,7 +261,8 @@ final class NativeGenerationRunner {
                 parts: capturedParts,
                 finishReason: "tool_calls",
                 errorCode: nil,
-                errorMessage: nil
+                errorMessage: nil,
+                usageJson: nil
               ),
               errorCode: nil,
               errorMessage: nil

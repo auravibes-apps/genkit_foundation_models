@@ -14,6 +14,7 @@ ModelResponse toModelResponse(
 
   return ModelResponse(
     finishReason: _toFinishReason(response.finishReason),
+    usage: _decodeUsage(response.usageJson),
     custom: _decodeJsonMap(response.customJson),
     raw: _decodeJsonMap(response.rawJson),
     message: Message(
@@ -125,6 +126,11 @@ Map<String, dynamic>? _decodeJsonMap(String? value) {
     FoundationModelsErrorCode.decodeFailed,
     'Native metadata JSON must be an object.',
   );
+}
+
+GenerationUsage? _decodeUsage(String? value) {
+  final usage = _decodeJsonMap(value);
+  return usage == null ? null : GenerationUsage.fromJson(usage);
 }
 
 FinishReason _toFinishReason(String? value) {

@@ -2,8 +2,13 @@
 
 * Added native Foundation Models tool capture so Genkit tools map through structured Apple tool calls instead of prompt-only tool-call text.
 * Added transcript mapping for prior model tool calls and tool responses.
-* Added `foundationModelsToolLoopMode: singlePhase` to force a final-answer pass without tools after tool responses.
+* Made tool-response follow-up turns omit tools by default so the model answers from tool output instead of looping through unrelated tools.
+* Added `foundationModelsToolLoopMode: chained` to opt into keeping tools available after tool responses.
+* Added example safeguards for todo write tools.
 * Added private bridge support for native reasoning/debug metadata, response `custom`/`raw` data, and chunk `custom` data.
+* Added private bridge support for native token usage through Genkit `GenerationUsage` when the SDK exposes usage data.
+* Added example debug visibility for missing or reported native token usage.
+* Hardened final-answer prompts so tool output is treated as untrusted data while preserving the full transcript.
 
 ## 0.0.4
 
