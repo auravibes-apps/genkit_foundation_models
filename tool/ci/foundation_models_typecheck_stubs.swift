@@ -29,6 +29,25 @@ struct NativePart {
   let text: String?
   let toolRequestJson: String?
   let toolResponseJson: String?
+  let reasoningText: String?
+  let metadataJson: String?
+  let customJson: String?
+
+  init(
+    text: String? = nil,
+    toolRequestJson: String? = nil,
+    toolResponseJson: String? = nil,
+    reasoningText: String? = nil,
+    metadataJson: String? = nil,
+    customJson: String? = nil
+  ) {
+    self.text = text
+    self.toolRequestJson = toolRequestJson
+    self.toolResponseJson = toolResponseJson
+    self.reasoningText = reasoningText
+    self.metadataJson = metadataJson
+    self.customJson = customJson
+  }
 }
 
 struct NativeMessage {
@@ -48,6 +67,24 @@ struct NativeGenerateResponse {
   let finishReason: String?
   let errorCode: String?
   let errorMessage: String?
+  let customJson: String?
+  let rawJson: String?
+
+  init(
+    parts: [NativePart],
+    finishReason: String? = nil,
+    errorCode: String? = nil,
+    errorMessage: String? = nil,
+    customJson: String? = nil,
+    rawJson: String? = nil
+  ) {
+    self.parts = parts
+    self.finishReason = finishReason
+    self.errorCode = errorCode
+    self.errorMessage = errorMessage
+    self.customJson = customJson
+    self.rawJson = rawJson
+  }
 }
 
 struct NativeGenerateStreamEvent {
@@ -57,6 +94,25 @@ struct NativeGenerateStreamEvent {
   let response: NativeGenerateResponse?
   let errorCode: String?
   let errorMessage: String?
+  let customJson: String?
+
+  init(
+    requestId: String,
+    parts: [NativePart]? = nil,
+    done: Bool,
+    response: NativeGenerateResponse? = nil,
+    errorCode: String? = nil,
+    errorMessage: String? = nil,
+    customJson: String? = nil
+  ) {
+    self.requestId = requestId
+    self.parts = parts
+    self.done = done
+    self.response = response
+    self.errorCode = errorCode
+    self.errorMessage = errorMessage
+    self.customJson = customJson
+  }
 }
 
 protocol FoundationModelsHostApi {

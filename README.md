@@ -20,7 +20,8 @@ streaming responses, multi-turn conversations, and Genkit-owned tool loops.
 - iOS and macOS shared Darwin plugin implementation
 - streaming text responses through Pigeon event channels
 - multi-turn Genkit conversations
-- Genkit tool request emission using formatted model output
+- Genkit tool request emission through native Foundation Models `Tool` capture
+- structured native reasoning/debug metadata when the runtime exposes it
 - typed availability and generation errors for app-friendly UI
 - example Flutter chat app for macOS/iOS
 
@@ -174,24 +175,31 @@ final response = await stream.onResult;
 print('Final: ${response.text}');
 ```
 
-When tools are active, raw tool-call markup is not streamed as visible text. The
-provider waits for the final native response, extracts tool requests in Dart, and
-lets Genkit run the normal tool loop.
+When tools are active, the provider uses a conservative final-response stream
+path so provisional native output does not leak tool protocol text into visible
+chunks.
 
 ## Tool Calling
 
-Apple Foundation Models does not expose the same dynamic tool-calling protocol
-as Genkit. This provider uses the same strategy as local model providers that do
-not have native tool calling: it asks the model to emit formatted tool requests,
-then Dart converts them into Genkit `ToolRequestPart`s.
+The provider maps Genkit tools into native Foundation Models `Tool` wrappers.
+Swift captures the native tool call arguments and returns them to Dart as Genkit
+`ToolRequestPart`s. Genkit still owns tool execution; Swift does not run app
+tools directly.
 
-The model is instructed to emit:
+Fenced JSON tool-call output is parsed only as a defensive fallback. Native
+Foundation Models tools are the supported path; prompt-printed tool calls are
+not part of Apple Foundation Models.
 
-```text
-<tool_call>{"name":"tool_name","arguments":{}}</tool_call>
-```
+## Reasoning And Debug Metadata
 
-Genkit still owns tool execution. Swift never runs tools directly.
+Assistant prose stays in `response.text`. Reasoning is never appended to visible
+text and the package does not prompt the model to print `Thought:` blocks.
+
+The private native bridge can carry structured reasoning/debug data as Genkit
+`ReasoningPart`s, part `metadata`/`custom`, response `custom`/`raw`, and stream
+chunk `custom` when the Foundation Models runtime exposes those values. Apps
+that want to display this should render it in a debug view, separate from the
+assistant answer.
 
 ```dart
 import 'package:genkit/genkit.dart';
@@ -232,9 +240,18 @@ Future<void> main() async {
 Safety behavior:
 
 - undeclared tool names are rejected before Genkit executes them
-- repeated requests for an already completed tool are ignored
-- tool-call tags are stripped from visible assistant text
-- old JSON shapes such as `{"toolRequests":[...]}` are supported as fallback
+- repeated requests for an already completed tool ref are ignored
+- tool-call protocol text is stripped from visible assistant text
+- fallback JSON shapes such as `{"toolRequests":[...]}` are supported only for
+  compatibility and leak prevention
+
+Tool-loop behavior:
+
+- by default, tools stay available while Genkit runs its normal tool loop
+- set `config: {'foundationModelsToolLoopMode': 'singlePhase'}` to omit tools
+  immediately after a tool response and force a final-answer pass
+- after a native generation failure on a tool-response turn, the provider retries
+  once without tools so the model can answer from the tool output
 
 ## Multi-turn Conversations
 
@@ -283,7 +300,7 @@ These Genkit features are not supported yet:
 - structured/constrained output
 - `toolChoice`
 - embeddings
-- native Swift tool execution
+- native Swift execution of Dart tool functions
 
 Structured output is a likely future feature because Foundation Models includes
 native structured generation APIs, but mapping arbitrary Dart/Genkit schemas to
@@ -319,6 +336,8 @@ The example shows:
 - availability checking
 - streaming responses
 - tool call timeline entries
+- exposed-tool and turn debug entries
+- optional `singlePhase` tool-loop toggle
 - typed error messages for Apple Intelligence availability states
 
 ## Development

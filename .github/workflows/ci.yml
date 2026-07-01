@@ -86,6 +86,18 @@ jobs:
         working-directory: example
         run: flutter build macos --debug
 
+      - name: Test macOS RunnerTests
+        if: matrix.platform == 'macos'
+        working-directory: example/macos
+        run: |
+          xcrun xcodebuild clean test \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -only-testing:RunnerTests \
+            CODE_SIGNING_ALLOWED=NO
+
       - name: Build example iOS app
         if: matrix.platform == 'ios'
         working-directory: example
@@ -93,3 +105,7 @@ jobs:
 
       - name: Typecheck FoundationModels Swift bridge when SDK is available
         run: tool/ci/typecheck_foundation_models.sh ${{ matrix.platform }}
+
+      - name: Test native tool capture helpers
+        if: matrix.platform == 'macos'
+        run: bash tool/ci/test_native_tool_capture.sh

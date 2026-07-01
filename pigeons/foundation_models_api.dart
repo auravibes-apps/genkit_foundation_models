@@ -28,7 +28,7 @@ class NativeGenerateRequest {
   /// JSON-encoded generation config such as temperature or token limit.
   String? configJson;
 
-  /// JSON-encoded tool declarations for formatted tool-call prompting.
+  /// JSON-encoded tool declarations for native tool capture.
   String? toolsJson;
 }
 
@@ -45,7 +45,14 @@ class NativeMessage {
 
 /// One native message or response part.
 class NativePart {
-  NativePart({this.text, this.toolRequestJson, this.toolResponseJson});
+  NativePart({
+    this.text,
+    this.toolRequestJson,
+    this.toolResponseJson,
+    this.reasoningText,
+    this.metadataJson,
+    this.customJson,
+  });
 
   /// Plain text content.
   String? text;
@@ -55,6 +62,15 @@ class NativePart {
 
   /// JSON-encoded Genkit tool response.
   String? toolResponseJson;
+
+  /// Native reasoning/debug text. Never assistant-visible response text.
+  String? reasoningText;
+
+  /// JSON-encoded metadata for this part.
+  String? metadataJson;
+
+  /// JSON-encoded custom data for this part.
+  String? customJson;
 }
 
 /// Complete native generation response.
@@ -64,6 +80,8 @@ class NativeGenerateResponse {
     this.finishReason,
     this.errorCode,
     this.errorMessage,
+    this.customJson,
+    this.rawJson,
   });
 
   /// Response parts returned by the native model bridge.
@@ -77,6 +95,12 @@ class NativeGenerateResponse {
 
   /// Optional native error message.
   String? errorMessage;
+
+  /// JSON-encoded response custom metadata.
+  String? customJson;
+
+  /// JSON-encoded raw native response/debug metadata.
+  String? rawJson;
 }
 
 /// Event emitted while a native generation request is streaming.
@@ -88,6 +112,7 @@ class NativeGenerateStreamEvent {
     this.response,
     this.errorCode,
     this.errorMessage,
+    this.customJson,
   });
 
   /// Native stream request id used to filter shared event-channel events.
@@ -107,6 +132,9 @@ class NativeGenerateStreamEvent {
 
   /// Optional native stream error message.
   String? errorMessage;
+
+  /// JSON-encoded stream chunk custom metadata.
+  String? customJson;
 }
 
 /// Host API implemented in Swift.

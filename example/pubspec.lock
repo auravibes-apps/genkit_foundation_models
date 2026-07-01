@@ -145,7 +145,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.0.4"
+    version: "0.0.5-wip"
   handlebars_dart:
     dependency: transitive
     description:
@@ -299,7 +299,7 @@ packages:
     source: hosted
     version: "2.2.3"
   schemantic:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: schemantic
       sha256: "87c9bb8c2b33be1904533f8f72094e76e772ef227b137dd0b77b4981c5f5ee77"
