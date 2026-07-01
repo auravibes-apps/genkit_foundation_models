@@ -75,20 +75,22 @@ class RunnerTests: XCTestCase {
 
 private final class MockFoundationModelsHostApi: FoundationModelsHostApi {
   func generate(
-    request: NativeGenerateRequest,
+    request _: NativeGenerateRequest,
     completion: @escaping (Result<NativeGenerateResponse, Error>) -> Void
   ) {
     completion(.success(NativeGenerateResponse(parts: [])))
   }
 
   func startGenerateStream(
-    request: NativeGenerateRequest,
+    request _: NativeGenerateRequest,
     completion: @escaping (Result<String, Error>) -> Void
   ) {
     completion(.success("request"))
   }
 
-  func cancelGenerateStream(requestId: String) throws {}
+  func cancelGenerateStream(requestId _: String) throws {
+    // No-op: registration tests only need the generated host API handler.
+  }
 
   func isAvailable(completion: @escaping (Result<Bool, Error>) -> Void) {
     completion(.success(false))
@@ -98,13 +100,17 @@ private final class MockFoundationModelsHostApi: FoundationModelsHostApi {
 private final class MockBinaryMessenger: NSObject, FlutterBinaryMessenger {
   private(set) var handlers = [String: FlutterBinaryMessageHandler]()
 
-  func send(onChannel channel: String, message: Data?) {}
+  func send(onChannel _: String, message _: Data?) {
+    // No-op: tests verify handler registration, not outbound messages.
+  }
 
   func send(
-    onChannel channel: String,
-    message: Data?,
-    binaryReply callback: FlutterBinaryReply? = nil
-  ) {}
+    onChannel _: String,
+    message _: Data?,
+    binaryReply _: FlutterBinaryReply? = nil
+  ) {
+    // No-op: tests verify handler registration, not outbound replies.
+  }
 
   func setMessageHandlerOnChannel(
     _ channel: String,
@@ -114,5 +120,7 @@ private final class MockBinaryMessenger: NSObject, FlutterBinaryMessenger {
     return FlutterBinaryMessengerConnection(handlers.count)
   }
 
-  func cleanUpConnection(_ connection: FlutterBinaryMessengerConnection) {}
+  func cleanUpConnection(_: FlutterBinaryMessengerConnection) {
+    // No-op: tests do not exercise connection cleanup.
+  }
 }

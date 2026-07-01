@@ -3,11 +3,11 @@ import Foundation
 final class FoundationModelsStreamHandler: StreamEventsStreamHandler {
   private var sink: PigeonEventSink<NativeGenerateStreamEvent>?
 
-  override func onListen(withArguments arguments: Any?, sink: PigeonEventSink<NativeGenerateStreamEvent>) {
+  override func onListen(withArguments _: Any?, sink: PigeonEventSink<NativeGenerateStreamEvent>) {
     self.sink = sink
   }
 
-  override func onCancel(withArguments arguments: Any?) {
+  override func onCancel(withArguments _: Any?) {
     sink = nil
   }
 
