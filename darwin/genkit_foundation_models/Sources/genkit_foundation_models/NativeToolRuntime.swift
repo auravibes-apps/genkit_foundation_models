@@ -10,6 +10,48 @@ struct NativeToolDeclaration {
   let inputSchema: [String: Any]?
 }
 
+extension FoundationModelsHostApiImpl {
+  static func toolDeclarations(from toolsJson: String?) throws -> [NativeToolDeclaration] {
+    guard let toolsJson, !toolsJson.isEmpty else { return [] }
+    guard let data = toolsJson.data(using: .utf8)
+    else {
+      throw PigeonError(
+        code: "decode_failed",
+        message: "Tools must be a JSON array.",
+        details: nil
+      )
+    }
+    let decoded: Any
+    do {
+      decoded = try JSONSerialization.jsonObject(with: data)
+    } catch {
+      throw PigeonError(
+        code: "decode_failed",
+        message: "Tools must be a JSON array.",
+        details: nil
+      )
+    }
+    guard let rawTools = decoded as? [[String: Any]] else {
+      throw PigeonError(
+        code: "decode_failed",
+        message: "Tools must be a JSON array.",
+        details: nil
+      )
+    }
+
+    return rawTools.compactMap { rawTool in
+      guard let name = rawTool["name"] as? String, !name.isEmpty else {
+        return nil
+      }
+      return NativeToolDeclaration(
+        name: name,
+        description: rawTool["description"] as? String ?? name,
+        inputSchema: rawTool["input"] as? [String: Any]
+      )
+    }
+  }
+}
+
 actor NativeToolCallRecorder {
   init(refPrefix: String = UUID().uuidString) {
     self.refPrefix = refPrefix
