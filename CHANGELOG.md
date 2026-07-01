@@ -1,4 +1,4 @@
-## 0.0.5-wip
+## 0.0.5
 
 * Added native Foundation Models tool capture so Genkit tools map through structured Apple tool calls instead of prompt-only tool-call text.
 * Added transcript mapping for prior model tool calls and tool responses.

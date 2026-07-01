@@ -145,7 +145,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.0.5-wip"
+    version: "0.0.5"
   handlebars_dart:
     dependency: transitive
     description:
