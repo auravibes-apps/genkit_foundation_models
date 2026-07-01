@@ -23,7 +23,7 @@ esac
 sdk_path="$(xcrun --sdk "$sdk" --show-sdk-path)"
 foundation_models="$sdk_path/System/Library/Frameworks/FoundationModels.framework"
 
-if [ ! -d "$foundation_models" ]; then
+if [[ ! -d "$foundation_models" ]]; then
   echo "FoundationModels.framework not available in $sdk SDK; skipping native SDK typecheck."
   exit 0
 fi

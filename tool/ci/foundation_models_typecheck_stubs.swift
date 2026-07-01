@@ -13,16 +13,22 @@ final class PigeonError: Error {
 }
 
 final class PigeonEventSink<T> {
-  func success(_ value: T) {}
+  func success(_ _: T) {
+    // Typecheck-only stub. Runtime event delivery is tested through generated code.
+  }
 }
 
 class StreamEventsStreamHandler {
   func onListen(
-    withArguments arguments: Any?,
-    sink: PigeonEventSink<NativeGenerateStreamEvent>
-  ) {}
+    withArguments _: Any?,
+    sink _: PigeonEventSink<NativeGenerateStreamEvent>
+  ) {
+    // Typecheck-only stub. Production stream handlers override this method.
+  }
 
-  func onCancel(withArguments arguments: Any?) {}
+  func onCancel(withArguments _: Any?) {
+    // Typecheck-only stub. Production stream handlers override this method.
+  }
 }
 
 struct NativePart {
