@@ -8,20 +8,15 @@ List<Part> _textToGenkitParts(
   final extraction = _extractJsonToolCalls(text);
   if (extraction == null) return [TextPart(text: text)];
 
-  final parts = <Part>[];
-  if (extraction.remainingText.isNotEmpty) {
-    parts.add(TextPart(text: extraction.remainingText));
-  }
-  parts.addAll(
-    extraction.toolRequests.map(
-      (toolRequest) => _toolRequestPart(
-        toolRequest,
-        allowedToolNames: allowedToolNames,
-        completedToolRefs: completedToolRefs,
-      ),
-    ),
-  );
-  return parts;
+  return extraction.toolRequests
+      .map(
+        (toolRequest) => _toolRequestPart(
+          toolRequest,
+          allowedToolNames: allowedToolNames,
+          completedToolRefs: completedToolRefs,
+        ),
+      )
+      .toList();
 }
 
 _ToolCallExtraction? _extractJsonToolCalls(String text) {
@@ -47,7 +42,7 @@ _ToolCallExtraction? _extractJsonToolCalls(String text) {
       ),
     );
   }
-  return _ToolCallExtraction(toolRequests: toolRequests, remainingText: '');
+  return _ToolCallExtraction(toolRequests: toolRequests);
 }
 
 Map<String, dynamic> _normalizeToolRequest(
@@ -82,11 +77,7 @@ String _jsonPayload(String text) {
 }
 
 final class _ToolCallExtraction {
-  const _ToolCallExtraction({
-    required this.toolRequests,
-    required this.remainingText,
-  });
+  const _ToolCallExtraction({required this.toolRequests});
 
   final List<Map<String, dynamic>> toolRequests;
-  final String remainingText;
 }

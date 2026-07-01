@@ -62,6 +62,8 @@ final class _GeneratePageState extends State<GeneratePage> {
   @override
   void initState() {
     super.initState();
+    // The example runs tools through _runToolRequest so every debug turn can
+    // log the same path. These callbacks only satisfy Genkit's Tool API.
     _currentTimeTool = Tool<Map<String, dynamic>?, Map<String, dynamic>>(
       name: 'current_time',
       description: 'Returns the current local date and time.',
@@ -216,7 +218,11 @@ final class _GeneratePageState extends State<GeneratePage> {
           ),
         );
         final responseMessage = response.message;
-        if (responseMessage == null) break;
+        if (responseMessage == null) {
+          throw StateError(
+            'Turn $turn returned no model message. See debug bubbles.',
+          );
+        }
         final toolRequests = response.toolRequests;
         if (toolRequests.isEmpty) {
           setState(() {
@@ -537,16 +543,25 @@ final class _GeneratePageState extends State<GeneratePage> {
   }
 
   Future<Map<String, dynamic>> _runToolRequest(ToolRequest request) async {
-    final output = switch (request.name) {
-      'current_time' => _currentTimeToolOutput(),
-      'todo_read' => _todoRead(),
-      'todo_add' => _todoAdd(request.input),
-      'todo_remove' => _todoRemove(request.input),
-      'todo_mark_done' => _todoSetDone(request.input, done: true),
-      'todo_mark_not_done' => _todoSetDone(request.input, done: false),
-      'todo_update_name' => _todoUpdateName(request.input),
-      _ => {'error': 'Unknown tool ${request.name}'},
-    };
+    Map<String, dynamic> output;
+    try {
+      output = switch (request.name) {
+        'current_time' => _currentTimeToolOutput(),
+        'todo_read' => _todoRead(),
+        'todo_add' => _todoAdd(request.input),
+        'todo_remove' => _todoRemove(request.input),
+        'todo_mark_done' => _todoSetDone(request.input, done: true),
+        'todo_mark_not_done' => _todoSetDone(request.input, done: false),
+        'todo_update_name' => _todoUpdateName(request.input),
+        _ => {'error': 'Unknown tool ${request.name}'},
+      };
+    } on ArgumentError catch (error) {
+      output = {'error': error.message?.toString() ?? error.toString()};
+    } on FormatException catch (error) {
+      output = {'error': error.message};
+    } on TypeError catch (error) {
+      output = {'error': error.toString()};
+    }
     _addItem(
       _ChatItem.tool('${request.name}(${request.input ?? {}}) -> $output'),
     );

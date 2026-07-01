@@ -55,15 +55,12 @@ import Foundation
     ) -> DynamicGenerationSchema {
       let required = Set(schema["required"] as? [String] ?? [])
       let properties = (schema["properties"] as? [String: Any] ?? [:])
-        .compactMap { key, value -> DynamicGenerationSchema.Property? in
-          guard let propertySchema = value as? [String: Any],
-                let dynamicPropertySchema = dynamicSchema(
-                  from: propertySchema,
-                  name: key
-                )
-          else {
-            return nil
-          }
+        .map { key, value -> DynamicGenerationSchema.Property in
+          let propertySchema = value as? [String: Any] ?? [:]
+          let dynamicPropertySchema = dynamicSchema(
+            from: propertySchema,
+            name: key
+          ) ?? DynamicGenerationSchema(type: String.self)
           return DynamicGenerationSchema.Property(
             name: key,
             description: propertySchema["description"] as? String,

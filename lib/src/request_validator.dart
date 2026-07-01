@@ -13,14 +13,24 @@ void _assertSupportedRequest(ModelRequest request) {
 
   for (final message in request.messages) {
     for (final part in message.content) {
-      final json = part.toJson();
-      if (json.containsKey('text')) continue;
-      if (json.containsKey('toolRequest')) continue;
-      if (json.containsKey('toolResponse')) continue;
+      if (_nativePartKind(part.toJson()) != null) continue;
       _unsupported('Only text and tool message parts are supported.');
     }
   }
 }
+
+_NativePartKind? _nativePartKind(Map<String, dynamic> json) {
+  if (json case {'text': String _}) return _NativePartKind.text;
+  if (json case {'toolRequest': Map<String, dynamic> _}) {
+    return _NativePartKind.toolRequest;
+  }
+  if (json case {'toolResponse': Map<String, dynamic> _}) {
+    return _NativePartKind.toolResponse;
+  }
+  return null;
+}
+
+enum _NativePartKind { text, toolRequest, toolResponse }
 
 Never _unsupported(String message) {
   throw FoundationModelsException(

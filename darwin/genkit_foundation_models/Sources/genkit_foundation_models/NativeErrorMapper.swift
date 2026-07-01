@@ -60,6 +60,18 @@ extension FoundationModelsHostApiImpl {
             message: generationError.localizedDescription,
             details: nil
           )
+        case .rateLimited:
+          return PigeonError(
+            code: "rate_limited",
+            message: generationError.localizedDescription,
+            details: nil
+          )
+        case .concurrentRequests:
+          return PigeonError(
+            code: "concurrent_requests",
+            message: generationError.localizedDescription,
+            details: nil
+          )
         default:
           return PigeonError(
             code: "generation_failed",

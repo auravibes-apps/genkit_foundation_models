@@ -29,6 +29,13 @@ struct NativeToolCaptureTest {
     } catch {
       precondition(true)
     }
+
+    do {
+      _ = try FoundationModelsHostApiImpl.toolDeclarations(from: "not json")
+      preconditionFailure("Expected malformed tools JSON to throw")
+    } catch {
+      precondition(true)
+    }
   }
 
   private static func testToolCallRecorderParts() async throws {

@@ -10,9 +10,25 @@ import Foundation
         return GenerationOptions()
       }
 
-      guard let data = configJson.data(using: .utf8),
-            let config = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+      guard let data = configJson.data(using: .utf8)
       else {
+        throw PigeonError(
+          code: "decode_failed",
+          message: "Generation config must be a JSON object.",
+          details: nil
+        )
+      }
+      let decoded: Any
+      do {
+        decoded = try JSONSerialization.jsonObject(with: data)
+      } catch {
+        throw PigeonError(
+          code: "decode_failed",
+          message: "Generation config must be a JSON object.",
+          details: nil
+        )
+      }
+      guard let config = decoded as? [String: Any] else {
         throw PigeonError(
           code: "decode_failed",
           message: "Generation config must be a JSON object.",

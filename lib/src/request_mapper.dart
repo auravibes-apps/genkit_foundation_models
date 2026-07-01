@@ -28,16 +28,24 @@ NativeMessage _toNativeMessage(Message message) {
 
 NativePart _toNativePart(Part part) {
   final json = part.toJson();
-  if (json case {'text': final String text}) {
-    return NativePart(text: text);
+  switch (_nativePartKind(json)) {
+    case _NativePartKind.text:
+      return NativePart(text: json['text'] as String);
+    case _NativePartKind.toolRequest:
+      return NativePart(
+        toolRequestJson: jsonEncode(
+          json['toolRequest'] as Map<String, dynamic>,
+        ),
+      );
+    case _NativePartKind.toolResponse:
+      return NativePart(
+        toolResponseJson: jsonEncode(
+          json['toolResponse'] as Map<String, dynamic>,
+        ),
+      );
+    case null:
+      _unsupported('Only text and tool message parts are supported.');
   }
-  if (json case {'toolRequest': final Map<String, dynamic> toolRequest}) {
-    return NativePart(toolRequestJson: jsonEncode(toolRequest));
-  }
-  if (json case {'toolResponse': final Map<String, dynamic> toolResponse}) {
-    return NativePart(toolResponseJson: jsonEncode(toolResponse));
-  }
-  _unsupported('Only text and tool message parts are supported.');
 }
 
 String? _extractSystemInstruction(List<Message> messages) {

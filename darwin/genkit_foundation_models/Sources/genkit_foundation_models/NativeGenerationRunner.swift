@@ -9,8 +9,12 @@ final class NativeGenerationRunner {
     self.streamHandler = streamHandler
   }
 
+  deinit {
+    streamTasks.cancelAll()
+  }
+
   private let streamHandler: FoundationModelsStreamHandler?
-  private var streamTasks: [String: Task<Void, Never>] = [:]
+  private let streamTasks = NativeStreamTaskStore()
 
   #if canImport(FoundationModels)
     @available(iOS 26.0, macOS 26.0, *)
@@ -135,8 +139,8 @@ final class NativeGenerationRunner {
       }
 
       let requestId = UUID().uuidString
-      streamTasks[requestId] = Task { [weak self, streamHandler] in
-        defer { self?.streamTasks.removeValue(forKey: requestId) }
+      let task = Task { [weak self, streamHandler] in
+        defer { self?.streamTasks.remove(requestId) }
         var toolRuntime: NativeToolRuntime?
         do {
           let runtime = try NativeToolRuntime(declarations: setup.toolDeclarations)
@@ -268,6 +272,7 @@ final class NativeGenerationRunner {
           ))
         }
       }
+      streamTasks.insert(task, for: requestId)
       completion(.success(requestId))
     #else
       completion(.failure(PigeonError(
@@ -279,6 +284,38 @@ final class NativeGenerationRunner {
   }
 
   func cancelGenerateStream(requestId: String) {
-    streamTasks.removeValue(forKey: requestId)?.cancel()
+    streamTasks.cancel(requestId)
+  }
+}
+
+private final class NativeStreamTaskStore {
+  private let lock = NSLock()
+  private var tasks: [String: Task<Void, Never>] = [:]
+
+  func insert(_ task: Task<Void, Never>, for requestId: String) {
+    lock.lock()
+    tasks[requestId] = task
+    lock.unlock()
+  }
+
+  func remove(_ requestId: String) {
+    lock.lock()
+    tasks.removeValue(forKey: requestId)
+    lock.unlock()
+  }
+
+  func cancel(_ requestId: String) {
+    lock.lock()
+    let task = tasks.removeValue(forKey: requestId)
+    lock.unlock()
+    task?.cancel()
+  }
+
+  func cancelAll() {
+    lock.lock()
+    let runningTasks = Array(tasks.values)
+    tasks.removeAll()
+    lock.unlock()
+    runningTasks.forEach { $0.cancel() }
   }
 }

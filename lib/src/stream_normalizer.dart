@@ -23,20 +23,14 @@ final class FoundationModelsStreamNormalizer {
         ),
       );
     }
+    final custom = _decodeJsonMap(event.customJson);
 
-    if (content.isNotEmpty) {
+    if (content.isNotEmpty || custom != null) {
       yield ModelResponseChunk(
         role: Role.model,
         content: content,
-        custom: _decodeJsonMap(event.customJson),
+        custom: custom,
       );
     }
-  }
-
-  ModelResponseChunk? flush({
-    Iterable<String>? allowedToolNames,
-    Iterable<String>? completedToolRefs,
-  }) {
-    return null;
   }
 }

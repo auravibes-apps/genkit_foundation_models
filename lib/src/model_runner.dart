@@ -82,15 +82,6 @@ final class _FoundationModelsModelRunner {
       }
     }
 
-    final bufferedChunk = streamNormalizer.flush(
-      allowedToolNames: allowedToolNames,
-      completedToolRefs: completedToolRefs,
-    );
-    if (bufferedChunk != null) {
-      streamedContent.addAll(bufferedChunk.content);
-      _context.sendChunk(bufferedChunk);
-    }
-
     if (finalResponse == null) {
       if (streamedContent.isNotEmpty) {
         return ModelResponse(
