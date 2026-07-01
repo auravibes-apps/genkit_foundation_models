@@ -12,6 +12,37 @@ final class NativeGenerationRunner {
   private let streamHandler: FoundationModelsStreamHandler?
   private var streamTasks: [String: Task<Void, Never>] = [:]
 
+  #if canImport(FoundationModels)
+    @available(iOS 26.0, macOS 26.0, *)
+    private struct NativeGenerationSetup {
+      let model: SystemLanguageModel
+      let toolDeclarations: [NativeToolDeclaration]
+      let promptContext: NativePromptContext
+      let options: GenerationOptions
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func makeSetup(
+      request: NativeGenerateRequest
+    ) throws -> NativeGenerationSetup {
+      let model = SystemLanguageModel.default
+      guard model.isAvailable else {
+        throw FoundationModelsHostApiImpl.availabilityError(for: model.availability)
+      }
+
+      return NativeGenerationSetup(
+        model: model,
+        toolDeclarations: try FoundationModelsHostApiImpl.toolDeclarations(
+          from: request.toolsJson
+        ),
+        promptContext: try FoundationModelsHostApiImpl.promptContext(from: request),
+        options: try FoundationModelsHostApiImpl.generationOptions(
+          from: request.configJson
+        )
+      )
+    }
+  #endif
+
   func generate(
     request: NativeGenerateRequest,
     completion: @escaping (Result<NativeGenerateResponse, Error>) -> Void
@@ -22,19 +53,9 @@ final class NativeGenerationRunner {
         return
       }
 
-      let model = SystemLanguageModel.default
-      guard model.isAvailable else {
-        completion(.failure(FoundationModelsHostApiImpl.availabilityError(for: model.availability)))
-        return
-      }
-
-      let toolDeclarations: [NativeToolDeclaration]
-      let promptContext: NativePromptContext
-      let options: GenerationOptions
+      let setup: NativeGenerationSetup
       do {
-        toolDeclarations = try FoundationModelsHostApiImpl.toolDeclarations(from: request.toolsJson)
-        promptContext = try FoundationModelsHostApiImpl.promptContext(from: request)
-        options = try FoundationModelsHostApiImpl.generationOptions(from: request.configJson)
+        setup = try makeSetup(request: request)
       } catch {
         completion(.failure(error))
         return
@@ -43,16 +64,19 @@ final class NativeGenerationRunner {
       Task {
         var toolRuntime: NativeToolRuntime?
         do {
-          let runtime = try NativeToolRuntime(declarations: toolDeclarations)
+          let runtime = try NativeToolRuntime(declarations: setup.toolDeclarations)
           toolRuntime = runtime
           let session = LanguageModelSession(
-            model: model,
+            model: setup.model,
             tools: runtime.tools,
-            transcript: promptContext.transcript
+            transcript: setup.promptContext.transcript
           )
           let response: LanguageModelSession.Response<String>
           do {
-            response = try await session.respond(to: promptContext.prompt, options: options)
+            response = try await session.respond(
+              to: setup.promptContext.prompt,
+              options: setup.options
+            )
           } catch let error as LanguageModelSession.ToolCallError
               where error.isNativeToolCapture {
             completion(.success(NativeGenerateResponse(
@@ -102,19 +126,9 @@ final class NativeGenerationRunner {
         return
       }
 
-      let model = SystemLanguageModel.default
-      guard model.isAvailable else {
-        completion(.failure(FoundationModelsHostApiImpl.availabilityError(for: model.availability)))
-        return
-      }
-
-      let toolDeclarations: [NativeToolDeclaration]
-      let promptContext: NativePromptContext
-      let options: GenerationOptions
+      let setup: NativeGenerationSetup
       do {
-        toolDeclarations = try FoundationModelsHostApiImpl.toolDeclarations(from: request.toolsJson)
-        promptContext = try FoundationModelsHostApiImpl.promptContext(from: request)
-        options = try FoundationModelsHostApiImpl.generationOptions(from: request.configJson)
+        setup = try makeSetup(request: request)
       } catch {
         completion(.failure(error))
         return
@@ -125,16 +139,19 @@ final class NativeGenerationRunner {
         defer { self?.streamTasks.removeValue(forKey: requestId) }
         var toolRuntime: NativeToolRuntime?
         do {
-          let runtime = try NativeToolRuntime(declarations: toolDeclarations)
+          let runtime = try NativeToolRuntime(declarations: setup.toolDeclarations)
           toolRuntime = runtime
           let session = LanguageModelSession(
-            model: model,
+            model: setup.model,
             tools: runtime.tools,
-            transcript: promptContext.transcript
+            transcript: setup.promptContext.transcript
           )
-          if !toolDeclarations.isEmpty {
+          if !setup.toolDeclarations.isEmpty {
             do {
-              let response = try await session.respond(to: promptContext.prompt, options: options)
+              let response = try await session.respond(
+                to: setup.promptContext.prompt,
+                options: setup.options
+              )
               streamHandler?.send(NativeGenerateStreamEvent(
                 requestId: requestId,
                 parts: nil,
@@ -167,7 +184,10 @@ final class NativeGenerationRunner {
             return
           }
 
-          let stream = session.streamResponse(to: promptContext.prompt, options: options)
+          let stream = session.streamResponse(
+            to: setup.promptContext.prompt,
+            options: setup.options
+          )
           var previousContent = ""
           for try await snapshot in stream {
             let content = snapshot.content

@@ -300,53 +300,67 @@ final class _GeneratePageState extends State<GeneratePage> {
       appBar: AppBar(title: const Text('Foundation Models')),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Expanded(child: Text('Apple Foundation Models: $availability')),
-                OutlinedButton.icon(
-                  onPressed: _items.isEmpty ? null : _copyLog,
-                  icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('Copy log'),
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('Debug'),
-                  selected: _showDebug,
-                  onSelected: (value) => setState(() => _showDebug = value),
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('Errors'),
-                  selected: _showErrors,
-                  onSelected: (value) => setState(() => _showErrors = value),
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('Single phase'),
-                  selected: _singlePhaseToolLoop,
-                  onSelected: (value) =>
-                      setState(() => _singlePhaseToolLoop = value),
-                ),
-              ],
+          Flexible(
+            fit: FlexFit.loose,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text('Apple Foundation Models: $availability'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _items.isEmpty ? null : _copyLog,
+                          icon: const Icon(Icons.copy, size: 18),
+                          label: const Text('Copy log'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Debug'),
+                          selected: _showDebug,
+                          onSelected: (value) =>
+                              setState(() => _showDebug = value),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Errors'),
+                          selected: _showErrors,
+                          onSelected: (value) =>
+                              setState(() => _showErrors = value),
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Single phase'),
+                          selected: _singlePhaseToolLoop,
+                          onSelected: (value) =>
+                              setState(() => _singlePhaseToolLoop = value),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _TodoPanel(todos: _todos),
+                  _ToolScopePanel(
+                    useAllTools: _useAllTools,
+                    toolNames: _tools.map((tool) => tool.name).toList(),
+                    selectedToolNames: _activeToolNames,
+                    manualToolNames: _manualToolNames,
+                    onUseAllToolsChanged: (value) =>
+                        setState(() => _useAllTools = value),
+                    onManualToolToggled: (toolName, selected) => setState(() {
+                      if (selected) {
+                        _manualToolNames.add(toolName);
+                      } else {
+                        _manualToolNames.remove(toolName);
+                      }
+                    }),
+                  ),
+                ],
+              ),
             ),
-          ),
-          _TodoPanel(todos: _todos),
-          _ToolScopePanel(
-            useAllTools: _useAllTools,
-            toolNames: _tools.map((tool) => tool.name).toList(),
-            selectedToolNames: _activeToolNames,
-            manualToolNames: _manualToolNames,
-            onUseAllToolsChanged: (value) =>
-                setState(() => _useAllTools = value),
-            onManualToolToggled: (toolName, selected) => setState(() {
-              if (selected) {
-                _manualToolNames.add(toolName);
-              } else {
-                _manualToolNames.remove(toolName);
-              }
-            }),
           ),
           Expanded(
             child: ListView.builder(
