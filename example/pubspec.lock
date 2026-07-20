@@ -302,10 +302,10 @@ packages:
     dependency: "direct main"
     description:
       name: schemantic
-      sha256: "87c9bb8c2b33be1904533f8f72094e76e772ef227b137dd0b77b4981c5f5ee77"
+      sha256: "3597f1c6bfcfc95e92bb215a8868be0494105b6b6c12228b184253616047d5d2"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.0"
+    version: "0.2.2"
   sky_engine:
     dependency: transitive
     description: flutter
