@@ -11,7 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  genkit: ^0.14.1
+  genkit: ">=0.14.1 <0.16.0"
   meta: ^1.17.0
 
 dev_dependencies:
